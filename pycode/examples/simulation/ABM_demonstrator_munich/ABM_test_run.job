@@ -1,0 +1,6 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_test_run_100000_17062026"
+#SBATCH -o log_ABM_run_100000_17062026.out 
+
+python abm_demonstrator_munich.py
