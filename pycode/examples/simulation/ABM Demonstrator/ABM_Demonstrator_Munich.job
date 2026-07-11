@@ -1,0 +1,9 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_demonstrator_munich_scaled_persons_10062026_256"
+#SBATCH -o log_10062026_256_without_hdf5.out 
+#SBATCH --mem 256G
+
+echo "The job works."
+python abm_demonstrator_munich.py
+echo "The job is finished."

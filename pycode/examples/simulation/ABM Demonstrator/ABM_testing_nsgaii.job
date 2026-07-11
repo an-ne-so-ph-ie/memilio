@@ -1,0 +1,10 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_testing_nsgaii_parallelized48_100000_21062026"
+#SBATCH -o log_testing_nsgaii_parallelized48_100000_21062026.out 
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH -c 48
+#SBATCH --mem 384G
+
+python testing_nsgaii.py
