@@ -260,6 +260,16 @@ public:
         return m_model_id;
     }
 
+    void increase_size() // Only used for Munich Demonstrator
+    {
+        m_size++;
+    }
+
+    size_t get_size() const // Only used for Munich Demonstrator
+    {
+        return m_size;
+    }
+
 private:
     LocationType m_type; ///< Type of the Location.
     LocationId m_id; ///< Unique identifier for the Location in the Model owning it.
@@ -269,6 +279,7 @@ private:
     mio::geo::GeographicalLocation
         m_geographical_location; ///< Geographical location (longitude and latitude) of the Location.
     int m_model_id; ///< Model id the location is in. Only used for ABM graph model or hybrid graph model.
+    size_t m_size; ///< Only used for Munich Demonstrator. Number of agents assigned to the location.
 };
 } // namespace abm
 
