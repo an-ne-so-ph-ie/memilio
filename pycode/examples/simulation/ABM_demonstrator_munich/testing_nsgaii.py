@@ -862,6 +862,7 @@ def run_abm_simulation(sim_seed_index, number_to_save, path_output_folder, work_
     # total_output_time += (end_h5_v5 - start_h5_v5)
     # print('done')
     # return (sim_num, total_init_time, total_simulation_time, total_output_time)
+    return len(sim.model.persons)
 
 
 import os
@@ -916,8 +917,8 @@ def run_one_abm_process(job):
     """
     Executes one ABM simulation in a separate process.
     """
+    sim_seed_index, number_to_save, parameter_for_closure, path_output_folder = job
     try:
-        sim_seed_index, number_to_save, parameter_for_closure, path_output_folder = job
         work_closure = parameter_for_closure[0]
         school_closure = parameter_for_closure[1]
         print(
@@ -930,10 +931,10 @@ def run_one_abm_process(job):
         print(parameter_for_closure)
 
         
-        result_abm = run_abm_simulation(sim_seed_index, number_to_save, path_output_folder, 100*work_closure, school_closure)
+        n_persons_abm = run_abm_simulation(sim_seed_index, number_to_save, path_output_folder, 100*work_closure, school_closure)
         df = pd.read_csv(os.path.join(path_output_folder, f"{number_to_save}_comps_damping.csv"), sep=r"\s+")
         # TODO population size noch veränderbar machen
-        infected_people = 100000 - df["S"].iloc[-1]
+        infected_people = len(n_persons_abm) - df["S"].iloc[-1]
 
         print(
             f"[DONE] simulation={number_to_save}, "
@@ -945,7 +946,7 @@ def run_one_abm_process(job):
         return infected_people
     
     except Exception as e:
-        print(f"Simulation {number_to_save} with school parameter {school_closure} and work parameter {work_closure} and seed {sim_seed_index} failed.")
+        print(f"Simulation {number_to_save}, seed {sim_seed_index}, x={parameter_for_closure} failed: {e!r}", flush=True)
         print(f"This is the exception thrown: {e}")
         return np.nan 
 
