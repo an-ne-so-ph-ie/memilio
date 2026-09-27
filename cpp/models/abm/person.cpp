@@ -39,6 +39,7 @@ Person::Person(mio::RandomNumberGenerator& rng, LocationType location_type, Loca
     , m_location_type(location_type)
     , m_location_model_id(location_model_id)
     , m_assigned_locations((uint32_t)LocationType::Count, LocationId::invalid_id())
+    , m_time_since_transmission(std::numeric_limits<int>::max() / 2) //for munich for infection start date
     , m_home_isolation_start(TimePoint(-(std::numeric_limits<int>::max() / 2)))
     , m_age(age)
     , m_time_at_location(0)
@@ -85,8 +86,9 @@ InfectionState Person::get_infection_state(TimePoint t) const
     }
 }
 
-void Person::add_new_infection(Infection&& inf)
+void Person::add_new_infection(Infection&& inf, TimePoint current_time)
 {
+    m_time_since_transmission = current_time - inf.get_infection_start(); //new for munich
     m_infections.push_back(std::move(inf));
 }
 

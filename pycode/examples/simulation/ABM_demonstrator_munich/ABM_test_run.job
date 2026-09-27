@@ -1,6 +1,18 @@
 #!/bin/bash
 
-#SBATCH -J "ABM_test_run_100000_17062026"
-#SBATCH -o log_ABM_run_100000_17062026.out 
+#SBATCH -J "ABM_with_damping_15_02092026_256"
+#SBATCH -o log_ABM_with_damping_15_02092026_256.out 
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH --mem 256G
+#SBATCH --cpus-per-task=4
+#SBATCH --ntasks=1
+
+export OMP_NUM_THREADS=1
+export OMP_DYNAMIC=FALSE
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 
 python abm_demonstrator_munich.py
+

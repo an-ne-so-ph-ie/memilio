@@ -535,6 +535,18 @@ public:
         }
     }
 
+    //AS von inside-demonstrator-munich
+    void add_infection_rate_damping(TimePoint t, double factor)
+    {
+        parameters.get<InfectionRateDampings>().push_back(std::make_pair(t, factor));
+    }
+
+    //AS von inside-demonstrator-munich
+    void add_location_closure(TimePoint t, LocationType loc_type, double percentage, std::string scheme)
+    {
+        parameters.get<LocationClosures>().push_back(std::make_tuple(t, loc_type, percentage, scheme));
+    }
+
 protected:
     /**
      * @brief Person%s interact at their Location and may become infected.

@@ -58,7 +58,7 @@ void set_home_office(TimePoint t_begin, ScalarType p, Parameters& params);
 void set_school_closure(TimePoint t_begin, ScalarType p, Parameters& params);
 
 /** 
- * @brief During lockdown Person%s join social events less often.
+ * @brief During lockdown Person%s join basic shops less often.
  * Whether a Person joins a social event is a random event (exponentially distributed).
  * The Damping changes the parameter of the exponential distribution, where a Damping of 0 corresponds to no Damping
  * and a Damping of 1 means that no social events are happening.
@@ -67,6 +67,17 @@ void set_school_closure(TimePoint t_begin, ScalarType p, Parameters& params);
  * @param[in,out] params Simulation parameters that include Damping.
  */
 void close_social_events(TimePoint t_begin, ScalarType p, Parameters& params);
+
+
+
+void reduce_shopping_rate(TimePoint t_begin, ScalarType p, Parameters& params);
+
+
+
+
+
+void infection_damping_via_reducing_rate(TimePoint t_begin, ScalarType p, Parameters& params);
+
 
 } // namespace abm
 } //namespace mio

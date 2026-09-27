@@ -144,6 +144,14 @@ public:
      */
     InfectionState get_infection_state(TimePoint t) const;
 
+    
+    /**
+     * @brief Get the starting time  of the Infection.
+     * @return starting time point of the Infection.
+     */
+    TimePoint get_infection_start() const;
+    
+
     /**
      * @brief Set the Infection to detected.
      */
@@ -171,6 +179,15 @@ public:
             .add("individual_viral_shed_factor", m_individual_viral_shed_factor)
             .add("detected", m_detected);
     }
+
+    /**
+     * @brief Get the the time in #InfectionState. 
+     * If the infection state is not part of the infection course, the time is zero.
+     * @param[in] state InfectionState of the query.
+     * @return TimeSpan spent in state.
+     */
+     //for munich to make infectionpaths
+    TimeSpan get_time_in_state(InfectionState state);
 
 private:
     friend DefaultFactory<Infection>;

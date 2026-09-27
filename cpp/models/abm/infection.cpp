@@ -144,6 +144,15 @@ InfectionState Infection::get_infection_state(TimePoint t) const
     return std::prev(it)->second;
 }
 
+TimePoint Infection::get_infection_start() const
+{
+    return (*std::find_if(m_infection_course.begin(), m_infection_course.end(),
+                          [](const std::pair<TimePoint, InfectionState>& inf) {
+                              return (inf.second == InfectionState::Exposed);
+                          }))
+        .first;
+}
+
 void Infection::set_detected()
 {
     m_detected = true;
@@ -157,6 +166,19 @@ bool Infection::is_detected() const
 TimePoint Infection::get_start_date() const
 {
     return m_viral_load.start_date;
+}
+
+TimeSpan Infection::get_time_in_state(InfectionState state)
+{
+    auto pos = std::find_if(m_infection_course.begin(), m_infection_course.end(),
+                            [state](const std::pair<TimePoint, InfectionState>& inf) {
+                                return (inf.second == state);
+                            });
+    // infection state is not part of infection course
+    if (pos == m_infection_course.end()) {
+        return TimeSpan(0);
+    }
+    return ((pos + 1)->first - pos->first);
 }
 
 StateTransition Infection::get_forward_transition(PersonalRandomNumberGenerator& rng, AgeGroup age,

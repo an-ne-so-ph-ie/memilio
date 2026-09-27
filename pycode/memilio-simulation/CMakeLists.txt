@@ -47,6 +47,8 @@ if(MEMILIO_USE_BUNDLED_PYBIND11)
 else()
     find_package(pybind11 REQUIRED)
 endif()
+set(BOOST_ROOT "/opt/ohpc/pub/spack/develop/opt/spack/linux-rocky8-zen2/gcc-12.2.0/boost-1.85.0-qz55jyxhn3c3vfverplcn7u2obcdz3nz") #hinzugefügt von AS
+find_package(Boost REQUIRED COMPONENTS filesystem) # hinzugefügt von AS
 
 # a list of all "LINKED_LIBRARIES" that are given to add_pymio_module. will contain duplicates
 # used for wheel installation
@@ -60,7 +62,7 @@ function(add_pymio_module target_name)
     cmake_parse_arguments(PYBIND11_MODULE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     pybind11_add_module(${target_name} MODULE ${PYBIND11_MODULE_SOURCES})
-    target_link_libraries(${target_name} PRIVATE ${PYBIND11_MODULE_LINKED_LIBRARIES})
+    target_link_libraries(${target_name} PRIVATE ${PYBIND11_MODULE_LINKED_LIBRARIES} Boost::filesystem) # hinzugefügt von AS
     target_include_directories(${target_name} PRIVATE memilio/simulation/bindings)
 
     # Collect linked libraries for later installation

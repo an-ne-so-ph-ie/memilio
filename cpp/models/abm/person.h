@@ -111,7 +111,8 @@ public:
      * @brief Adds a new Infection to the list of Infection%s.
      * @param[in] inf The new Infection.
      */
-    void add_new_infection(Infection&& inf);
+    // before: void add_new_infection(Infection&& inf);, now for munich:
+    void add_new_infection(Infection&& inf, TimePoint current_time = TimePoint(0));
 
     /**
      * @brief Get the AgeGroup of this Person.
@@ -452,6 +453,7 @@ private:
     Person always visits the same Home or School etc. */
     std::vector<ProtectionEvent> m_vaccinations; ///< Vector with all vaccinations the Person has received.
     std::vector<Infection> m_infections; ///< Vector with all Infection%s the Person had.
+    TimeSpan m_time_since_transmission;
     TimePoint m_home_isolation_start; ///< TimePoint when the Person started isolation at home.
     AgeGroup m_age; ///< AgeGroup the Person belongs to.
     TimeSpan m_time_at_location; ///< Time the Person has spent at its current Location so far.

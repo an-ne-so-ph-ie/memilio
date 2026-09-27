@@ -45,5 +45,21 @@ void close_social_events(TimePoint t_begin, ScalarType p, Parameters& params)
     params.get<SocialEventRate>().add_damping(damping1, SimulationTime<ScalarType>(t_begin.days()));
 }
 
+
+void reduce_shopping_rate(TimePoint t_begin, ScalarType p, Parameters& params)
+{
+    auto damping1 = Eigen::VectorX<ScalarType>::Constant(params.get_num_groups(), p);
+    params.get<BasicShoppingRate>().add_damping(damping1, SimulationTime<ScalarType>(t_begin.days()));
+}
+
+
+void infection_damping_via_reducing_rate(TimePoint t_begin, ScalarType p, Parameters& params)
+{
+    set_home_office(t_begin, p, params);
+    set_school_closure(t_begin, p, params);
+    close_social_events(t_begin, p, params);
+    reduce_shopping_rate(t_begin, p, params);
+}
+
 } // namespace abm
 } // namespace mio

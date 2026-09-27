@@ -27,6 +27,7 @@
 
 //Includes from MEmilio
 #include "abm/simulation.h"
+#include "abm/lockdown_rules.h"  
 
 #include "pybind11/attr.h"
 #include "pybind11/cast.h"
@@ -52,9 +53,11 @@ struct LogNewInfectionsAndShedding : mio::LogAlways { //AS
         double shedding    = 0.0;
         
         for (auto&& person : sim.get_model().get_persons()) {
-            auto time_since_transmission =  sim.get_time() - person.get_infection().get_start_date(); //before: get_time_since_transmission()
-            if (time_since_transmission.hours() >= 0 && time_since_transmission.hours() < 1) {
-                new_infections += 1;
+            if (person.get_infection_state(sim.get_time()) != mio::abm::InfectionState::Susceptible){ //hinzufügen, weil bei susceptible wir sonst ein Problem mit der Zeit bekommen, weil es da keine infection gibt
+                auto time_since_transmission =  sim.get_time() - person.get_infection().get_start_date(); //before: get_time_since_transmission()
+                if (time_since_transmission.hours() >= 0 && time_since_transmission.hours() < 1) {
+                    new_infections += 1;
+                }
             }
             if (person.is_infected(sim.get_time())) {
                 auto& infection = person.get_infection();
@@ -115,7 +118,10 @@ struct LogPersonsPerLocationAndInfectionTime : mio::LogAlways { //AS
             location_ids_person{};
         for (auto&& person : sim.get_model().get_persons()) {
             //int ww_id = sim.get_model().get_location(person.get_location()); //before: .get_wastewater_id();
-            auto time_since_transmission =  sim.get_time() - person.get_infection().get_start_date(); //before: get_time_since_transmission()
+            auto time_since_transmission = mio::abm::hours(-1); //für susceptible, weil es da keine time_since_transmission gibt
+            if (person.get_infection_state(sim.get_time()) != mio::abm::InfectionState::Susceptible) {
+                time_since_transmission =  sim.get_time() - person.get_infection().get_start_date(); //before: get_time_since_transmission()
+            }
             location_ids_person.push_back(std::make_tuple(person.get_location(), person.get_location_type(),
                                                           person.get_id(), time_since_transmission, //before: .get_time_since_transmission(),
                                                           person.get_infection_state(sim.get_time())));//, ww_id));
@@ -169,7 +175,194 @@ mio::AgeGroup determine_age_group(uint32_t age)
     }
 }
 
+void write_contact_file(std::string filename, mio::History<mio::DataWriterToMemory, LogTimePoint, LogLocationIds,
+                                                           LogPersonsPerLocationAndInfectionTime, LogAgentIds>& history)
+{
+    auto file = fopen(filename.c_str(), "w");
+    if (file == NULL) {
+        mio::log(mio::LogLevel::err, "Could not open file {}", filename);
+    }
+    else {
+        // get agents ids
+        auto log          = history.get_log();
+        auto agent_ids    = std::get<3>(log)[0];
+        auto logPerPerson = std::get<2>(log);
 
+        const int num_agents     = static_cast<int>(agent_ids.size());
+        const int num_timepoints = static_cast<int>(logPerPerson.size());
+        fprintf(file, "loc_type t mean_num_agents max_num_agents \n");
+        // Iterate over all agents
+        for (int t = 0; t < num_timepoints; ++t) {
+            // Map for every location type that has number of contacts for every location
+            std::map<mio::abm::LocationType, std::map<mio::abm::LocationId, int>> agents_per_loc;
+            // Iterate over all agents and increase the count of their location
+            for (auto& id : agent_ids) {
+                auto loc_id    = std::get<0>(logPerPerson[t][id.get()]);
+                auto type      = std::get<1>(logPerPerson[t][id.get()]);
+                auto type_iter = agents_per_loc.find(type);
+                if (type_iter == agents_per_loc.end()) {
+                    agents_per_loc.insert({type, {{loc_id, 1}}});
+                }
+                else {
+                    auto id_iter = agents_per_loc[type].find(loc_id);
+                    if (id_iter == agents_per_loc[type].end()) {
+                        agents_per_loc[type].insert({loc_id, 1});
+                    }
+                    else {
+                        agents_per_loc[type][loc_id] += 1;
+                    }
+                }
+            }
+            // Iterate over all location types
+            for (const auto& type_pair : agents_per_loc) {
+                int sum       = 0;
+                int max_value = std::numeric_limits<int>::min();
+                for (const auto& id_contacts : type_pair.second) {
+                    sum += id_contacts.second;
+                    if (id_contacts.second > max_value) {
+                        max_value = id_contacts.second;
+                    }
+                }
+                fprintf(file, "%d ", int(type_pair.first));
+                fprintf(file, "%d ", t);
+                double mean = static_cast<double>(sum) / type_pair.second.size();
+                fprintf(file, "%.14f ", mean);
+                fprintf(file, "%d ", max_value);
+                fprintf(file, "\n");
+            }
+        }
+        fclose(file);
+    }
+}
+
+void write_infection_paths(std::string filename, mio::abm::Model& model, mio::abm::TimePoint tmax)
+{
+    auto file = fopen(filename.c_str(), "w");
+    if (file == NULL) {
+        mio::log(mio::LogLevel::warn, "Could not open file {}", filename);
+    }
+    else {
+        fprintf(file, "Agent_id S E I_ns I_sy I_sev I_cri R D\n");
+        for (auto& person : model.get_persons()) {
+            fprintf(file, "%d ", person.get_id().get());
+            if (person.get_infection_state(tmax) == mio::abm::InfectionState::Susceptible) {
+                fprintf(file, "%.14f ", tmax.hours());
+                for (auto i = 0; i < static_cast<int>(mio::abm::InfectionState::Count); ++i) {
+                    fprintf(file, "0 ");
+                }
+            }
+            else {
+                auto time_S = std::max(
+                    {person.get_infection().get_infection_start() - mio::abm::TimePoint(0), mio::abm::TimeSpan(0)});
+                auto time_E    = person.get_infection().get_time_in_state(mio::abm::InfectionState::Exposed);
+                auto time_INS  = person.get_infection().get_time_in_state(mio::abm::InfectionState::InfectedNoSymptoms);
+                auto time_ISy  = person.get_infection().get_time_in_state(mio::abm::InfectionState::InfectedSymptoms);
+                auto time_ISev = person.get_infection().get_time_in_state(mio::abm::InfectionState::InfectedSevere);
+                auto time_ICri = person.get_infection().get_time_in_state(mio::abm::InfectionState::InfectedCritical);
+                auto time_R    = mio::abm::TimePoint(0);
+                auto time_D    = mio::abm::TimePoint(0);
+                auto t_Infected = time_E + time_INS + time_ISy + time_ISev + time_ICri;
+                if (person.get_infection_state(tmax) == mio::abm::InfectionState::Recovered) {
+                    if (time_S.hours() == 0) {
+                        time_R =
+                            tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
+                    }
+                    else {
+                        time_R = tmax - time_S - t_Infected;
+                    }
+                }
+                else if (person.get_infection_state(tmax) == mio::abm::InfectionState::Dead) {
+                    if (time_S.hours() == 0) {
+                        time_D =
+                            tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
+                    }
+                    else {
+                        time_D = tmax - time_S - t_Infected;
+                    }
+                }
+                fprintf(file, "%.14f ", time_S.hours());
+                fprintf(file, "%.14f ", time_E.hours());
+                fprintf(file, "%.14f ", time_INS.hours());
+                fprintf(file, "%.14f ", time_ISy.hours());
+                fprintf(file, "%.14f ", time_ISev.hours());
+                fprintf(file, "%.14f ", time_ICri.hours());
+                fprintf(file, "%.14f ", time_R.hours());
+                fprintf(file, "%.14f ", time_D.hours());
+            }
+            fprintf(file, "\n");
+        }
+        fclose(file);
+    }
+}
+
+
+void write_compartments(std::string filename, mio::abm::Model& model,
+                        mio::History<mio::DataWriterToMemory, LogTimePoint, LogLocationIds,
+                                     LogPersonsPerLocationAndInfectionTime, LogAgentIds>& history)
+{
+    auto file = fopen(filename.c_str(), "w");
+    if (file == NULL) {
+        mio::log(mio::LogLevel::warn, "Could not open file {}", filename);
+    }
+    else {
+        auto log = history.get_log();
+        auto tps = std::get<0>(log);
+        fprintf(file, "t S E Ins Isy Isev Icri R D\n");
+        for (auto t = size_t(0); t < tps.size(); ++t) {
+            auto tp = mio::abm::TimePoint(0) + mio::abm::hours(t);
+            fprintf(file, "%.14f ", tps[t]);
+            std::vector<int> comps(static_cast<size_t>(mio::abm::InfectionState::Count));
+            for (auto& person : model.get_persons()) {
+                auto state = person.get_infection_state(tp);
+                comps[static_cast<size_t>(state)] += 1;
+            }
+            for (auto c : comps) {
+                fprintf(file, "%d ", c);
+            }
+            fprintf(file, "\n");
+        }
+        fclose(file);
+    }
+}
+
+int stringToMinutes(const std::string& input) //help function imported from inside-demonstrator-munich:cpp/munich_postprocessing/output_processing.h
+{
+    size_t colonPos = input.find(":");
+    if (colonPos == std::string::npos) {
+        // Handle invalid input (no colon found)
+        return -1; // You can choose a suitable error code here.
+    }
+
+    std::string xStr = input.substr(0, colonPos);
+    std::string yStr = input.substr(colonPos + 1);
+
+    int x = std::stoi(xStr);
+    int y = std::stoi(yStr);
+    return x * 60 + y;
+}
+
+int longLatToInt(const std::string& input) //help function imported from inside-demonstrator-munich:cpp/munich_postprocessing/output_processing.h
+{
+    double y = std::stod(input) * 1e+5; //we want the 5 numbers after digit
+    return (int)y;
+}
+
+void split_line(std::string string, std::vector<int32_t>* row) //help function imported from inside-demonstrator-munich:cpp/munich_postprocessing/output_processing.h
+{
+    std::vector<std::string> strings;
+    boost::split(strings, string, boost::is_any_of(","));
+    std::transform(strings.begin(), strings.end(), std::back_inserter(*row), [&](std::string s) {
+        if (s.find(":") != std::string::npos) {
+            return stringToMinutes(s);
+        }
+        else if (s.find(".") != std::string::npos) {
+            return longLatToInt(s);
+        }
+        else {
+            return std::stoi(s);
+        }
+    });
+}
 
 void initialize_model(mio::abm::Model& model, std::string person_file, std::string hosp_file, std::string outfile,
                       size_t max_work_size, size_t max_school_size)
@@ -541,7 +734,40 @@ void initialize_model(mio::abm::Model& model, std::string person_file, std::stri
     write_mapping_to_file(outfile, loc_area_mapping);
 }
 
-
+void write_size_per_location(std::string out_file, mio::abm::Model& model)
+{
+    std::map<std::string, size_t> size_per_loc;
+    // Count number of assigned persons for each location
+    for (auto& a : model.get_persons()) {
+        for (auto& loc_id : a.get_assigned_locations()) {
+            auto& loc = model.get_location(loc_id);
+            if (loc_id != mio::abm::LocationId::invalid_id() && loc.get_type() != mio::abm::LocationType::Cemetery) {
+                std::string loc_string =
+                    "0" + std::to_string(static_cast<int>(loc.get_type())) + std::to_string(loc.get_id().get());
+                auto string_iter = size_per_loc.find(loc_string);
+                if (string_iter == size_per_loc.end()) {
+                    size_per_loc.insert({loc_string, 1});
+                }
+                else {
+                    size_per_loc[loc_string] += 1;
+                }
+            }
+        }
+    }
+    //write map to file
+    auto file = fopen(out_file.c_str(), "w");
+    if (file == NULL) {
+        mio::log(mio::LogLevel::warn, "Could not open file {}", out_file);
+    }
+    else {
+        for (auto it = size_per_loc.begin(); it != size_per_loc.end(); it++) {
+            fprintf(file, "%s", (it->first).c_str());
+            fprintf(file, " %d", int(it->second));
+            fprintf(file, "\n");
+        }
+        fclose(file);
+    }
+}
 
 PYBIND11_MODULE(_simulation_abm, m)
 {
@@ -553,7 +779,8 @@ PYBIND11_MODULE(_simulation_abm, m)
         .value("InfectedSevere", mio::abm::InfectionState::InfectedSevere)
         .value("InfectedCritical", mio::abm::InfectionState::InfectedCritical)
         .value("Recovered", mio::abm::InfectionState::Recovered)
-        .value("Dead", mio::abm::InfectionState::Dead);
+        .value("Dead", mio::abm::InfectionState::Dead)
+        .value("Count", mio::abm::InfectionState::Count);
 
     pymio::iterable_enum<mio::abm::ProtectionType>(m, "ProtectionType")
         .value("NoProtection", mio::abm::ProtectionType::NoProtection)
@@ -634,6 +861,7 @@ PYBIND11_MODULE(_simulation_abm, m)
     pymio::bind_CustomIndexArray<mio::UncertainValue<double>, mio::abm::VirusVariant, mio::AgeGroup>(
         m, "_AgeParameterArray");
     pymio::bind_CustomIndexArray<mio::abm::TestParameters, mio::abm::TestType>(m, "_TestData");
+    pymio::bind_CustomIndexArray<double, mio::abm::VirusVariant>(m, "_InfectionRateArray"); //hinzugefügt und nicht sicher, ob ich es brauche
     pymio::bind_Index<mio::abm::ProtectionType>(m, "ProtectionTypeIndex");
     pymio::bind_ParameterSet<mio::abm::ParametersBase, pymio::EnablePickling::Never>(m, "ParametersBase");
     pymio::bind_class<mio::abm::Parameters, pymio::EnablePickling::Never, mio::abm::ParametersBase>(m, "Parameters")
@@ -655,6 +883,10 @@ PYBIND11_MODULE(_simulation_abm, m)
     pymio::bind_class<mio::abm::Person, pymio::EnablePickling::Never>(m, "Person")
         .def("set_assigned_location", py::overload_cast<mio::abm::LocationType, mio::abm::LocationId, int>(
                                           &mio::abm::Person::set_assigned_location))
+        .def("add_new_infection",
+             [](mio::abm::Person& self, mio::abm::Infection& infection, mio::abm::TimePoint t) {
+                 self.add_new_infection(std::move(infection), t);
+             })
         .def_property_readonly("location", py::overload_cast<>(&mio::abm::Person::get_location, py::const_))
         .def_property_readonly("age", &mio::abm::Person::get_age)
         .def_property_readonly("is_in_quarantine", &mio::abm::Person::is_in_quarantine);
@@ -729,6 +961,37 @@ PYBIND11_MODULE(_simulation_abm, m)
         .def("assign_location",
              py::overload_cast<mio::abm::PersonId, mio::abm::LocationId>(&mio::abm::Model::assign_location),
              py::arg("person_id"), py::arg("location_id"))
+
+        .def("add_infection_rate_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+         //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
+         infection_damping_via_reducing_rate(t, factor, model.parameters);
+        },
+         py::arg("t"), py::arg("factor"))
+
+        .def("add_work_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+         //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
+         set_home_office(t, factor, model.parameters);
+        },
+         py::arg("t"), py::arg("factor"))
+
+         .def("add_school_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+         //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
+         set_school_closure(t, factor, model.parameters);
+        },
+         py::arg("t"), py::arg("factor"))
+
+         .def("add_socialEvent_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+         //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
+         close_social_events(t, factor, model.parameters);
+        },
+         py::arg("t"), py::arg("factor"))
+        
+        .def("add_BasicShop_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+         //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
+         reduce_shopping_rate(t, factor, model.parameters);
+        },
+         py::arg("t"), py::arg("factor"))
+
         .def_property_readonly("locations", py::overload_cast<>(&mio::abm::Model::get_locations, py::const_),
                                py::keep_alive<1, 0>{}) //keep this model alive while contents are referenced in ranges
         .def_property_readonly("persons", py::overload_cast<>(&mio::abm::Model::get_persons, py::const_),
@@ -799,8 +1062,113 @@ PYBIND11_MODULE(_simulation_abm, m)
     
     m.def("initialize_model", &initialize_model, py::return_value_policy::reference_internal);
 
-    
+    m.def(
+        "set_viral_load_parameters",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double min_peak,
+           double max_peak, double min_incline, double max_incline, double min_decline, double max_decline) {
+            infection_params.get<mio::abm::ViralLoadDistributions>()[{variant, age}] =
+                mio::abm::ViralLoadDistributionsParameters{
+                    mio::ParameterDistributionUniform(min_peak, max_peak),
+                    mio::ParameterDistributionUniform(min_incline, max_incline),
+                    mio::ParameterDistributionUniform(min_decline, max_decline)};
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_incubationPeriod",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeExposedToNoSymptoms>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma); //before incubationperiod and only {my,sigma}
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedNoSymptomsToSymptoms",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedNoSymptomsToSymptoms>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedNoSymptomsToRecovered",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedNoSymptomsToRecovered>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedSymptomsToSevere",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedSymptomsToSevere>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedSymptomsToRecovered",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedSymptomsToRecovered>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedSevereToRecovered",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedSevereToRecovered>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedSevereToCritical",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedSevereToCritical>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedCriticalToRecovered",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedCriticalToRecovered>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_TimeInfectedCriticalToDead",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double my,
+           double sigma) {
+            infection_params.get<mio::abm::TimeInfectedCriticalToDead>()[{variant, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def(
+        "set_infectivity_parameters",
+        [](mio::abm::Parameters& infection_params, mio::abm::VirusVariant variant, mio::AgeGroup age, double alpha_value,
+           double beta_value) {
+            infection_params.get<mio::abm::ViralShedParameters>()[{variant, age}] =
+                mio::abm::ViralShedTuple{alpha_value, beta_value};
+        },
+        py::return_value_policy::reference_internal);
+
+    m.def("set_AgeGroupGoToSchool", [](mio::abm::Parameters& infection_params, mio::AgeGroup age) {
+        infection_params.get<mio::abm::AgeGroupGotoSchool>()[age] = true;
+    });
+
+    m.def("set_AgeGroupGoToWork", [](mio::abm::Parameters& infection_params, mio::AgeGroup age) {
+        infection_params.get<mio::abm::AgeGroupGotoWork>()[age] = true;
+    });
+
+    m.def("write_size_per_location", &write_size_per_location, py::return_value_policy::reference_internal);
+    m.def("save_infection_paths", &write_infection_paths, py::return_value_policy::reference_internal);
+    m.def("save_comp_output", &write_compartments, py::return_value_policy::reference_internal);
+    m.def("write_contacts", &write_contact_file, py::return_value_policy::reference_internal);
 }
+
 
 PYMIO_IGNORE_VALUE_TYPE(decltype(std::declval<mio::abm::Model>().get_locations()))
 PYMIO_IGNORE_VALUE_TYPE(decltype(std::declval<mio::abm::Model>().get_persons()))

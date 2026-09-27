@@ -33,6 +33,8 @@ from memilio.simulation import AgeGroup
 from memilio.simulation.abm import VirusVariant
 from memilio.simulation.abm import History
 from memilio.simulation.abm import Infection
+import memilio.simulation.abm as mabm
+dir(mabm)
 
 import pandas as pd
 
@@ -77,8 +79,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_0_to_4,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_0_to_4] = parameters.loc["Age0to4_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -113,8 +115,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_5_to_15,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_5_to_15] = parameters.loc["Age5to14_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -149,8 +151,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_16_to_34,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_16_to_34] = parameters.loc["Age15to34_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -185,8 +187,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_35_to_59,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_35_to_59] = parameters.loc["Age35to59_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -221,8 +223,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_60_to_79,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_60_to_79] = parameters.loc["Age60to79_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -257,8 +259,8 @@ def set_infection_parameters(parameters, kappa):
                                   parameters.loc["decline"].value, parameters.loc["decline"].value)
     abm.set_infectivity_parameters(
         infection_params, VirusVariant.Wildtype, age_group_80_plus,
-        parameters.loc["alpha"].value, parameters.loc["alpha"].value,
-        parameters.loc["beta"].value, parameters.loc["beta"].value)
+        parameters.loc["alpha"].value,
+        parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_80_plus] = parameters.loc["Age80plus_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
@@ -340,7 +342,7 @@ def assign_infection_states(model, t0, exposed_pct, infected_no_symptoms_pct, in
                 shift_rate = np.minimum(shift_rate1, shift_rate2)
             # shift = False
             person.add_new_infection(Infection(
-                model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False, shift, shift_rate), t0)
+                model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False), t0) #entfernt davon für München: shift, shift_rate, weil wird auf main nicht verwendet
 
 
 def save_persons(trip_file):
@@ -666,9 +668,11 @@ def write_person_to_loc_assigment(model, sim_num):
 
 
 def run_abm_simulation(sim_num):
+    print("Simulation:", sim_num)
+    print("Seed:", sim_num)
     mio.abm.set_log_level_warn()
     input_path = sys.path[0] + '/input/'
-    output_path = sys.path[0] + '/output/'
+    output_path = sys.path[0] + '/output/output_ABM_1.5_dampings/'
     specs = pd.read_csv(os.path.join(
         input_path, "pop8_sel_particles.csv"), index_col=0, dtype={"damp_time": "int64"})
     local_outbreak = False
@@ -693,7 +697,7 @@ def run_abm_simulation(sim_num):
     # set seeds for simulation
     abm.set_seeds(sim.model, specs["seed"][sim_num])
     # initialize model
-    abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join(
+    abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join( #epersons_scaled
         input_path, 'hospitals.csv'), os.path.join(
         output_path, str(sim_num) + '_mapping.txt'), max_work_size, max_school_size)
     # read infection parameters
@@ -706,25 +710,31 @@ def run_abm_simulation(sim_num):
     abm.set_AgeGroupGoToSchool(sim.model.parameters, age_group_5_to_15)
     abm.set_AgeGroupGoToWork(sim.model.parameters, age_group_16_to_34)
     abm.set_AgeGroupGoToWork(sim.model.parameters, age_group_35_to_59)
-    # set age groups that go to shop
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_0_to_4)
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_5_to_15)
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_16_to_34)
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_35_to_59)
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_60_to_79)
-    abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_80_plus)
+    # set age groups that go to shop # exisiterien in der main nicht mehr, deswegen ausklammern
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_0_to_4)
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_5_to_15)
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_16_to_34)
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_35_to_59)
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_60_to_79)
+    # abm.set_AgeGroupGoToShop(sim.model.parameters, age_group_80_plus)
     # add dampings
     sim.model.add_infection_rate_damping(
         abm.TimePoint(abm.days(specs["damp_time"][sim_num]).seconds), specs["damp_lvl"][sim_num])
     # add closure for work, event, shop and school locations at day 5
-    sim.model.add_location_closure(abm.TimePoint(
-        abm.days(19).seconds), abm.LocationType.Work, 0.37, location_closure_scheme_random)
-    sim.model.add_location_closure(abm.TimePoint(
-        abm.days(14).seconds), abm.LocationType.School, 1.0, location_closure_scheme_random)
-    sim.model.add_location_closure(abm.TimePoint(
-        abm.days(19).seconds), abm.LocationType.SocialEvent, 0.51, location_closure_scheme_maximum)
-    sim.model.add_location_closure(abm.TimePoint(
-        abm.days(19).seconds), abm.LocationType.BasicsShop, 0.13, location_closure_scheme_maximum)
+    sim.model.add_work_damping(t0 + abm.days(19), 0.37 )
+    sim.model.add_school_damping(t0 + abm.days(14), 1.0)
+    sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
+    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+
+    # sim.model.add_location_closure(abm.TimePoint(
+    #     abm.days(19).seconds), abm.LocationType.Work, 0.37, location_closure_scheme_random)
+    # sim.model.add_location_closure(abm.TimePoint(
+    #     abm.days(14).seconds), abm.LocationType.School, 1.0, location_closure_scheme_random)
+    # sim.model.add_location_closure(abm.TimePoint(
+    #     abm.days(19).seconds), abm.LocationType.SocialEvent, 0.51, location_closure_scheme_maximum)
+    # # TO DO AS
+    # #sim.model.add_location_closure(abm.TimePoint(
+    #    abm.days(19).seconds), abm.LocationType.BasicsShop, 0.13, location_closure_scheme_maximum)
     end_init = time.time()
     print(f'Time for model initialization: {end_init - start_init} seconds')
     total_init_time += (end_init - start_init)
@@ -741,7 +751,7 @@ def run_abm_simulation(sim_num):
 
     start_locs = []
     # specify starting locations if local outbreak should be simulated
-    if (local_outbreak):
+    if (local_outbreak): #should be set to False
         start_home_map = time.time()
         home_map = create_home_mapping(tan_map)
         start_areas = ['58']
@@ -763,7 +773,7 @@ def run_abm_simulation(sim_num):
     
     # write size per location
     abm.write_size_per_location(os.path.join(
-        output_path, str(sim_num) + '_size_per_loc.txt'), sim.model)
+        output_path, str(sim_num) + '_size_per_loc_damping.txt'), sim.model)
 
     #write_person_to_loc_assigment(sim.model, sim_num)
     # output object
@@ -780,15 +790,15 @@ def run_abm_simulation(sim_num):
     # write infection paths per agent to file
     start_o1 = time.time()
     abm.save_infection_paths(os.path.join(
-        output_path, str(sim_num) + '_infection_paths.txt'), sim.model, tmax)
+        output_path, str(sim_num) + '_infection_paths_damping.txt'), sim.model, tmax)
     end_o1 = time.time()
     print(f'Time writing infection paths txt: {end_o1 - start_o1} seconds')
     total_output_time += (end_o1 - start_o1)
     # write compartment size per time step to file
     start_o2 = time.time()
     abm.save_comp_output(os.path.join(
-        output_path, str(sim_num) + '_comps.csv'), sim.model, history)
-    abm.write_contacts(os.path.join(output_path, str(sim_num) + '_contacts.csv'), history) #TODO AS
+        output_path, str(sim_num) + '_comps_damping.csv'), sim.model, history)
+    abm.write_contacts(os.path.join(output_path, str(sim_num) + '_contacts_damping.csv'), history) #TODO AS
     end_o2 = time.time()
     print(f'Time writing comps csv: {end_o2 - start_o2} seconds')
     total_output_time += (end_o2 - start_o2)
@@ -850,6 +860,9 @@ def run_abm_simulation(sim_num):
     # return (sim_num, total_init_time, total_simulation_time, total_output_time)
 
 
+import os
+from concurrent.futures import ProcessPoolExecutor
+
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(
         'abm demonstrator',
@@ -861,9 +874,10 @@ if __name__ == "__main__":
     init_times = []
     sim_times = []
     output_times = []
+    #run_abm_simulation(1,  **args.__dict__)
+
     for i in range(1, 5):
-        print(i, "das wird jetzt ausgeführt")
-        o = run_abm_simulation(i, **args.__dict__)
+       o = run_abm_simulation(i,  **args.__dict__)
     #     sim_nums.append(o[0])
     #     init_times.append(o[1])
     #     sim_times.append(o[2])

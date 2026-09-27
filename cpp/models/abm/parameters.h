@@ -26,6 +26,8 @@
 #include "abm/virus_variant.h"
 #include "abm/protection_event.h"
 #include "abm/protection_event.h"
+#include "abm/location_type.h"
+
 #include "abm/test_type.h"
 #include "memilio/config.h"
 #include "memilio/io/default_serialize.h"
@@ -41,6 +43,7 @@
 #include "memilio/epidemiology/age_group.h"
 #include "memilio/epidemiology/damping.h"
 #include "memilio/epidemiology/contact_matrix.h"
+
 
 #include <algorithm>
 #include <limits>
@@ -547,16 +550,20 @@ struct QuarantineEffectiveness {
  * @brief Parameter for the exponential distribution to decide if a Person goes shopping.
  */
 struct BasicShoppingRate {
-    using Type = CustomIndexArray<UncertainValue<ScalarType>, AgeGroup>;
-    static auto get_default(AgeGroup size)
+    //using Type = CustomIndexArray<UncertainValue<>, AgeGroup>;
+    using Type =
+        DampingMatrixExpression<ScalarType, Dampings<ScalarType, Damping<ScalarType, ColumnVectorShape<ScalarType>>>>;
+    static auto get_default(AgeGroup /*size*/)
     {
-        return Type({size}, 1.0);
+        //return Type({size}, 1.0);
+        return Type(Eigen::VectorX<ScalarType>::Constant(1, 1.0));
     }
     static std::string name()
     {
         return "BasicShoppingRate";
     }
 };
+
 
 /**
  * @brief Percentage of Person%s of the respective age going to work.
@@ -696,16 +703,49 @@ struct AgeGroupGotoWork {
     }
 };
 
+/**
+ * @brief Determines location closures. 
+ * x% (3rd tuple value) of locations of the given type are closed at the given TimePoint following the scheme specified by the string (4th tuple value).
+ * Currently the schemes 'random' and 'maximum' are implemented. 'random' randomly choses the locations to close and 'maximum' closes the first x% with the largest size.
+ */
+ //AS von inside-demonstrator-munich
+struct LocationClosures { 
+    using Type = std::vector<std::tuple<TimePoint, mio::abm::LocationType, double, std::string>>;
+    static Type get_default(AgeGroup /*size*/)
+    {
+        return Type(std::vector<std::tuple<TimePoint, LocationType, double, std::string>>{
+            std::make_tuple(TimePoint(0), LocationType::Cemetery, 0., "random")}); //Julia
+    }
+    static std::string name()
+    {
+        return "LocationClosures";
+    }
+};
+
+/**
+ * @brief Determines dampings on the infection rate. The dampings are used as a linear factor.
+*/
+struct InfectionRateDampings {
+    using Type = std::vector<std::pair<TimePoint, double>>;
+    static Type get_default(AgeGroup /*size*/)
+    {
+        return Type(std::vector<std::pair<TimePoint, double>>{std::make_pair(TimePoint(0), 1.)}); //Julia
+    }
+    static std::string name()
+    {
+        return "InfectionRateDampings";
+    }
+};
+
 using ParametersBase =
     ParameterSet<TimeExposedToNoSymptoms, TimeInfectedNoSymptomsToSymptoms, TimeInfectedNoSymptomsToRecovered,
                  TimeInfectedSymptomsToSevere, TimeInfectedSymptomsToRecovered, TimeInfectedSevereToCritical,
                  TimeInfectedSevereToRecovered, TimeInfectedSevereToDead, TimeInfectedCriticalToDead,
                  TimeInfectedCriticalToRecovered, SymptomsPerInfectedNoSymptoms, SeverePerInfectedSymptoms,
                  CriticalPerInfectedSevere, DeathsPerInfectedSevere, DeathsPerInfectedCritical, ViralLoadDistributions,
-                 ViralShedParameters, ViralShedFactor, InfectionRateFromViralShed, MaskProtection,
-                 AerosolTransmissionRates, LockdownDate, QuarantineDuration, QuarantineEffectiveness, SocialEventRate,
-                 BasicShoppingRate, WorkRatio, SchoolRatio, GotoWorkTimeMinimum, GotoWorkTimeMaximum,
-                 GotoSchoolTimeMinimum, GotoSchoolTimeMaximum, AgeGroupGotoSchool, AgeGroupGotoWork,
+                 ViralShedParameters, ViralShedFactor, InfectionRateFromViralShed, InfectionRateDampings, MaskProtection,
+                 AerosolTransmissionRates, LockdownDate, QuarantineDuration, QuarantineEffectiveness, SocialEventRate, BasicShoppingRate, WorkRatio, SchoolRatio, GotoWorkTimeMinimum, GotoWorkTimeMaximum,
+                 GotoSchoolTimeMinimum, GotoSchoolTimeMaximum, LocationClosures, AgeGroupGotoSchool, AgeGroupGotoWork,
                  InfectionProtectionFactor, SeverityProtectionFactor, HighViralLoadProtectionFactor, TestData>;
 
 /**

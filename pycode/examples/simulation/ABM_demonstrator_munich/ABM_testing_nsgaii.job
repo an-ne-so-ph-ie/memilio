@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_avs100b_parl48_768_100000_18092026"
+#SBATCH -o log_avs100b_parl48_768_100000_18092026.out 
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH -c 48
+#SBATCH --mem 768G
+
+export OMP_NUM_THREADS=1
+export OMP_DYNAMIC=FALSE
+
+echo "CPUs: $SLURM_CPUS_PER_TASK"
+echo "OMP_NUM_THREADS: $OMP_NUM_THREADS"
+echo "OMP_DYNAMIC: $OMP_DYNAMIC"
+
+python testing_nsgaii.py
+
+echo "Python exit code: $?"
+
+
+sacct -j $SLURM_JOB_ID --format=JobID,State,ExitCode,Elapsed,MaxRSS,ReqMem
