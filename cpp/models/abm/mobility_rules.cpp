@@ -93,7 +93,7 @@ LocationType go_to_shop(PersonalRandomNumberGenerator& rng, const Person& person
          //                        {{LocationType::BasicsShop, params.get<BasicShoppingRate>()[person.get_age()]}}); //before AS
         return random_transition(
             rng, current_loc, dt,
-            {{LocationType::SocialEvent, params.get<BasicShoppingRate>().get_matrix_at(
+            {{LocationType::BasicsShop, params.get<BasicShoppingRate>().get_matrix_at(
                                              SimulationTime<ScalarType>(t.days()))[(size_t)person.get_age()]}});
     }
 
