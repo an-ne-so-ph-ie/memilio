@@ -961,11 +961,13 @@ PYBIND11_MODULE(_simulation_abm, m)
         .def("assign_location",
              py::overload_cast<mio::abm::PersonId, mio::abm::LocationId>(&mio::abm::Model::assign_location),
              py::arg("person_id"), py::arg("location_id"))
-
-        .def("add_infection_rate_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
+        
+        //AS: davor mit main, weil noch über viral shed definiert
+        //.def("add_infection_rate_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {
          //mio::abm::TimePoint t_begin(static_cast<int>(t * 24 * 60 * 60)); 
-         infection_damping_via_reducing_rate(t, factor, model.parameters);
-        },
+        // infection_damping_via_reducing_rate(t, factor, model.parameters);
+        //},
+        .def("add_infection_rate_damping", &mio::abm::Model::add_infection_rate_damping,
          py::arg("t"), py::arg("factor"))
 
         .def("add_work_damping", [](mio::abm::Model& model, mio::abm::TimePoint t, double factor) {

@@ -40,6 +40,7 @@
 #include <bitset>
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 namespace mio
 {
@@ -536,10 +537,21 @@ public:
     }
 
     //AS von inside-demonstrator-munich
+    //void add_infection_rate_damping(TimePoint t, double factor)
+    //{
+    //    parameters.get<InfectionRateDampings>().push_back(std::make_pair(t, factor));
+    //}
+
+    // AS neu
     void add_infection_rate_damping(TimePoint t, double factor)
     {
-        parameters.get<InfectionRateDampings>().push_back(std::make_pair(t, factor));
-    }
+        auto& d = parameters.get<InfectionRateDampings>();
+        d.push_back(std::make_pair(t, factor));
+        std::stable_sort(d.begin(), d.end(), [](const auto& a, const auto& b) {
+            return a.first < b.first;
+    });
+    }//sortierung einfügen, weil das sonst die späteren zu spät macht
+
 
     //AS von inside-demonstrator-munich
     void add_location_closure(TimePoint t, LocationType loc_type, double percentage, std::string scheme)

@@ -77,6 +77,12 @@ void interact(PersonalRandomNumberGenerator& personal_rng, Person& person, const
     }));
 
     if (person.get_infection_state(t) == InfectionState::Susceptible) {
+        //AS neu hinzugefügt
+        ScalarType damping_factor = 1.0;
+        for (const auto& [t_damp, factor] : global_parameters.get<InfectionRateDampings>()) {
+            if (t_damp <= t) damping_factor = factor;   // letzter bereits begonnener Faktor
+            else break;}
+        // bis hierhin hinzugefügt
         auto& local_parameters = location.get_infection_parameters();
         // TODO: we need to define what a cell is used for, as the loop may lead to incorrect results for multiple cells
         auto age_receiver          = person.get_age();
@@ -92,8 +98,11 @@ void interact(PersonalRandomNumberGenerator& personal_rng, Person& person, const
                                                 local_population_by_age_receiver, local_parameters) +
                      total_exposure_by_air(local_air_exposure, cell_index, virus, global_parameters)) *
                     (1 - mask_protection) * (1 - person.get_protection_factor(t, virus, global_parameters));
+                // AS: vorher mit main, jetzt zu mehr inside-munich-dem geändert
+                //ScalarType infection_rate =
+                //    global_parameters.get<InfectionRateFromViralShed>()[{virus}] * exposed_viral_shed;
                 ScalarType infection_rate =
-                    global_parameters.get<InfectionRateFromViralShed>()[{virus}] * exposed_viral_shed;
+                    global_parameters.get<InfectionRateFromViralShed>()[{virus}] * damping_factor * exposed_viral_shed;
                 local_indiv_expected_trans[v] = std::make_pair(virus, infection_rate);
             }
             VirusVariant virus =

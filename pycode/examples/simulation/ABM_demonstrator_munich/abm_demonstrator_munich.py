@@ -697,7 +697,7 @@ def run_abm_simulation(sim_num):
     # set seeds for simulation
     abm.set_seeds(sim.model, specs["seed"][sim_num])
     # initialize model
-    abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join( #epersons_scaled
+    abm.initialize_model(sim.model, input_path + '100000_persons.csv', os.path.join( #epersons_scaled
         input_path, 'hospitals.csv'), os.path.join(
         output_path, str(sim_num) + '_mapping.txt'), max_work_size, max_school_size)
     # read infection parameters
