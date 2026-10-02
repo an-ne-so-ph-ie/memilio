@@ -934,7 +934,7 @@ def run_one_abm_process(job):
         n_persons_abm = run_abm_simulation(sim_seed_index, number_to_save, path_output_folder, 100*work_closure, school_closure)
         df = pd.read_csv(os.path.join(path_output_folder, f"{number_to_save}_comps_damping.csv"), sep=r"\s+")
         # TODO population size noch veränderbar machen
-        infected_people = len(n_persons_abm) - df["S"].iloc[-1]
+        infected_people = n_persons_abm - df["S"].iloc[-1]
 
         print(
             f"[DONE] simulation={number_to_save}, "
@@ -996,15 +996,10 @@ class nsgaii__on_abm_parallelized(Problem):
                         results[job_index] = result
                         # TO DO besser vermutlich: bissle andere programmierung mit i in der menge drin, sollte ich mir noch einmal anschauen
                     except Exception as e:
-                        print(
-                        f"[PROCESS FAILED] "
-                        f"job_index={job_index}, "
-                        f"simulation={number_to_save}, "
-                        f"seed={sim_seed_index}: "
+                        sim_seed_index_f, number_to_save_f, x_f, _ = job
+                        print(f"[PROCESS FAILED] job_index={job_index}, simulation={number_to_save_f}, "
                         f"PID={os.getpid()}",
-                        f"{repr(e)}",
-                        flush=True,
-                    )
+                        f"seed={sim_seed_index_f}, x={x_f}: {e!r}", flush=True)
                 
         results_np = np.asarray(results, dtype=float)
         if np.isnan(results_np).any():
