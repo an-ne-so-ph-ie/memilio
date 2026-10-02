@@ -110,21 +110,43 @@ LocationType go_to_event(PersonalRandomNumberGenerator& rng, const Person& perso
 {
     auto current_loc = person.get_location_type();
     //leave
-    if (current_loc == LocationType::Home && t < params.get<LockdownDate>() &&
-        ((t.day_of_week() <= 4 && t.hour_of_day() >= 19 && t.hour_of_day() < 22) ||
-         (t.day_of_week() >= 5 && t.hour_of_day() >= 10 && t.hour_of_day() < 22)) &&
-        !person.is_in_quarantine(t, params)) {
-        return random_transition(
-            rng, current_loc, dt,
-            {{LocationType::SocialEvent, params.get<SocialEventRate>().get_matrix_at(
-                                             SimulationTime<ScalarType>(t.days()))[(size_t)person.get_age()]}});
-    }
+    if (params.get<mio::abm::AgeGroupGotoWork>()[person.get_age()] ||
+        params.get<mio::abm::AgeGroupGotoSchool>()[person.get_age()]) {
+        if (current_loc == LocationType::Home && t < params.get<LockdownDate>() &&
+            ((t.day_of_week() <= 4 && t.hour_of_day() >= 19 && t.hour_of_day() < 22) ||
+            (t.day_of_week() >= 5 && t.hour_of_day() >= 10 && t.hour_of_day() < 22)) &&
+            !person.is_in_quarantine(t, params)) {
+            return random_transition(
+                rng, current_loc, dt,
+                {{LocationType::SocialEvent, params.get<SocialEventRate>().get_matrix_at(
+                                                SimulationTime<ScalarType>(t.days()))[(size_t)person.get_age()]}});
+        }
 
-    //return home
-    if (current_loc == LocationType::SocialEvent && t.hour_of_day() >= 20 &&
-        person.get_time_at_location() >= hours(2)) {
-        return LocationType::Home;
+        //return home
+        if (current_loc == LocationType::SocialEvent && t.hour_of_day() >= 20 &&
+            person.get_time_at_location() >= hours(2)) {
+            return LocationType::Home;
+        }
     }
+    else {
+        //leave
+        if (current_loc == LocationType::Home && t < params.get<LockdownDate>() &&
+            ((t.day_of_week() <= 4 && t.hour_of_day() >= 8 && t.hour_of_day() < 22) ||
+             (t.day_of_week() >= 5 && t.hour_of_day() >= 10 && t.hour_of_day() < 22)) &&
+            !person.is_in_quarantine(t, params)) {
+            return random_transition(rng, current_loc, dt,
+                {{LocationType::SocialEvent, params.get<SocialEventRate>().get_matrix_at(
+                                                                      SimulationTime<ScalarType>(t.days()))[(size_t)person.get_age()]}});
+        }
+
+        //return home
+        if ((t.day_of_week() <= 4 && current_loc == LocationType::SocialEvent &&
+             person.get_time_at_location() >= hours(2)) ||
+            (t.day_of_week() >= 5 && current_loc == LocationType::SocialEvent && t.hour_of_day() >= 17 &&
+             person.get_time_at_location() >= hours(2))) {
+            return LocationType::Home;
+        }
+    }  
 
     return current_loc;
 }
