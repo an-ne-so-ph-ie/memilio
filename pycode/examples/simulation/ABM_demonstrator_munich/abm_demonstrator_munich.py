@@ -54,6 +54,11 @@ def set_infection_parameters(parameters, kappa):
 
     infection_params.InfectionRateFromViralShed[VirusVariant.Wildtype] = kappa
 
+    all_ages = [age_group_0_to_4, age_group_5_to_15, age_group_16_to_34,
+            age_group_35_to_59, age_group_60_to_79, age_group_80_plus]
+    for age in all_ages:
+        infection_params.DeathsPerInfectedSevere[VirusVariant.Wildtype, age] = 0.0
+
     # AgeGroup 0-4
     abm.set_incubationPeriod(
         infection_params, VirusVariant.Wildtype, age_group_0_to_4, parameters.loc["Age0to4_IncubationPeriod"].value, parameters.loc["Age0to4_IncubationPeriod"].dev)
@@ -82,13 +87,14 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_0_to_4] = parameters.loc["Age0to4_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_0_to_4] =  0.5 * parameters.loc["Age0to4_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_0_to_4] = parameters.loc["Age0to4_SeverePerInfectedSymptoms"].value
+                                               age_group_0_to_4] =  0.5 * parameters.loc["Age0to4_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_0_to_4] = parameters.loc["Age0to4_CriticalPerInfectedSevere"].value
+                                               age_group_0_to_4] =  0.5 * parameters.loc["Age0to4_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_0_to_4] = parameters.loc["Age0to4_DeathsPerInfectedCritical"].value
+                                               age_group_0_to_4] = 0.5 * parameters.loc["Age0to4_DeathsPerInfectedCritical"].value
+    
 
     # AgeGroup 5-14
     abm.set_incubationPeriod(
@@ -118,13 +124,13 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_5_to_15] = parameters.loc["Age5to14_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_5_to_15] =  0.5 * parameters.loc["Age5to14_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_5_to_15] = parameters.loc["Age5to14_SeverePerInfectedSymptoms"].value
+                                               age_group_5_to_15] =  0.5 * parameters.loc["Age5to14_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_5_to_15] = parameters.loc["Age5to14_CriticalPerInfectedSevere"].value
+                                               age_group_5_to_15] =  0.5 * parameters.loc["Age5to14_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_5_to_15] = parameters.loc["Age5to14_DeathsPerInfectedCritical"].value
+                                               age_group_5_to_15] =  0.5 * parameters.loc["Age5to14_DeathsPerInfectedCritical"].value
 
     # AgeGroup 15-34
     abm.set_incubationPeriod(
@@ -154,13 +160,13 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_16_to_34] = parameters.loc["Age15to34_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_16_to_34] =  0.5 * parameters.loc["Age15to34_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_16_to_34] = parameters.loc["Age15to34_SeverePerInfectedSymptoms"].value
+                                               age_group_16_to_34] =  0.5 * parameters.loc["Age15to34_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_16_to_34] = parameters.loc["Age15to34_CriticalPerInfectedSevere"].value
+                                               age_group_16_to_34] =  0.5 * parameters.loc["Age15to34_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_16_to_34] = parameters.loc["Age15to34_DeathsPerInfectedCritical"].value
+                                               age_group_16_to_34] =  0.5 * parameters.loc["Age15to34_DeathsPerInfectedCritical"].value
 
     # AgeGroup 35-59
     abm.set_incubationPeriod(
@@ -190,13 +196,13 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_35_to_59] = parameters.loc["Age35to59_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_35_to_59] =  0.5 * parameters.loc["Age35to59_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_35_to_59] = parameters.loc["Age35to59_SeverePerInfectedSymptoms"].value
+                                               age_group_35_to_59] =  0.5 * parameters.loc["Age35to59_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_35_to_59] = parameters.loc["Age35to59_CriticalPerInfectedSevere"].value
+                                               age_group_35_to_59] =  0.5 * parameters.loc["Age35to59_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_35_to_59] = parameters.loc["Age35to59_DeathsPerInfectedCritical"].value
+                                               age_group_35_to_59] =  0.5 * parameters.loc["Age35to59_DeathsPerInfectedCritical"].value
 
     # AgeGroup 60-79
     abm.set_incubationPeriod(
@@ -226,13 +232,13 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_60_to_79] = parameters.loc["Age60to79_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_60_to_79] =  0.5 * parameters.loc["Age60to79_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_60_to_79] = parameters.loc["Age60to79_SeverePerInfectedSymptoms"].value
+                                               age_group_60_to_79] =  0.5 * parameters.loc["Age60to79_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_60_to_79] = parameters.loc["Age60to79_CriticalPerInfectedSevere"].value
+                                               age_group_60_to_79] =  0.5 * parameters.loc["Age60to79_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_60_to_79] = parameters.loc["Age60to79_DeathsPerInfectedCritical"].value
+                                               age_group_60_to_79] =  0.5 * parameters.loc["Age60to79_DeathsPerInfectedCritical"].value
 
     # AgeGroup 80+
     abm.set_incubationPeriod(
@@ -262,13 +268,13 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["alpha"].value,
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
-                                                      age_group_80_plus] = parameters.loc["Age80plus_SymptomsPerInfectedNoSymptoms"].value
+                                                      age_group_80_plus] =  0.5 * parameters.loc["Age80plus_SymptomsPerInfectedNoSymptoms"].value
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
-                                               age_group_80_plus] = parameters.loc["Age80plus_SeverePerInfectedSymptoms"].value
+                                               age_group_80_plus] =  0.5 * parameters.loc["Age80plus_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
-                                               age_group_80_plus] = parameters.loc["Age80plus_CriticalPerInfectedSevere"].value
+                                               age_group_80_plus] =  0.5 * parameters.loc["Age80plus_CriticalPerInfectedSevere"].value
     infection_params.DeathsPerInfectedCritical[VirusVariant.Wildtype,
-                                               age_group_80_plus] = parameters.loc["Age80plus_DeathsPerInfectedCritical"].value
+                                               age_group_80_plus] =  0.5 * parameters.loc["Age80plus_DeathsPerInfectedCritical"].value
 
     return infection_params
 
@@ -341,8 +347,11 @@ def assign_infection_states(model, t0, exposed_pct, infected_no_symptoms_pct, in
                      (parameters.loc[param_string2].dev**2)/2.) / 4.)
                 shift_rate = np.minimum(shift_rate1, shift_rate2)
             # shift = False
-            person.add_new_infection(Infection(
-                model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False), t0) #entfernt davon für München: shift, shift_rate, weil wird auf main nicht verwendet
+            #person.add_new_infection(Infection(
+            #    model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False), t0) #entfernt davon für München: shift, shift_rate, weil wird auf main nicht verwendet
+            # das geändert, damit die Anfangsdistribution bisschen verchoben wird
+            person.add_new_infection(Infection(model, person, VirusVariant.Wildtype, t0,
+                                   abm.InfectionState(infection_state), 0.0, 0.5, False), t0)
 
 
 def save_persons(trip_file):
