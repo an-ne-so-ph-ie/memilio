@@ -123,7 +123,7 @@ LocationType go_to_event(PersonalRandomNumberGenerator& rng, const Person& perso
         }
 
         //return home
-        if (current_loc == LocationType::SocialEvent && t.hour_of_day() >= 20 &&
+        if (current_loc == LocationType::SocialEvent && t.hour_of_day() >= 17 &&
             person.get_time_at_location() >= hours(2)) {
             return LocationType::Home;
         }
