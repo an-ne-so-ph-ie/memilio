@@ -858,6 +858,7 @@ def run_abm_simulation(sim_num):
     # total_output_time += (end_h5_v5 - start_h5_v5)
     # print('done')
     # return (sim_num, total_init_time, total_simulation_time, total_output_time)
+    return len(sim.model.persons)
 
 
 import os
@@ -875,9 +876,7 @@ if __name__ == "__main__":
     sim_times = []
     output_times = []
     #run_abm_simulation(1,  **args.__dict__)
-
-    for i in range(1, 5):
-       o = run_abm_simulation(i,  **args.__dict__)
+    o = run_abm_simulation(1,  **args.__dict__)
     #     sim_nums.append(o[0])
     #     init_times.append(o[1])
     #     sim_times.append(o[2])
