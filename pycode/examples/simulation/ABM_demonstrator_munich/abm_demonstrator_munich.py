@@ -53,10 +53,12 @@ def set_infection_parameters(parameters, kappa):
     infection_params = abm.Parameters(num_age_groups)
 
     infection_params.InfectionRateFromViralShed[VirusVariant.Wildtype] = kappa
-
+    infection_params.AerosolTransmissionRates[VirusVariant.Wildtype] = 1.0
+    infection_params.QuarantineEffectiveness = 0.0
     all_ages = [age_group_0_to_4, age_group_5_to_15, age_group_16_to_34,
-            age_group_35_to_59, age_group_60_to_79, age_group_80_plus]
+                age_group_35_to_59, age_group_60_to_79, age_group_80_plus]
     for age in all_ages:
+        abm.set_TimeInfectedSevereToDead(infection_params, VirusVariant.Wildtype, age, 1.0, 1.0)
         infection_params.DeathsPerInfectedSevere[VirusVariant.Wildtype, age] = 0.0
 
     # AgeGroup 0-4
@@ -709,7 +711,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # set seeds for simulation
     abm.set_seeds(sim.model, specs["seed"][sim_num])
     # initialize model
-    abm.initialize_model(sim.model, input_path + '100000_persons.csv', os.path.join( #epersons_scaled
+    abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join( #epersons_scaled
         input_path, 'hospitals.csv'), os.path.join(
         output_path, str(sim_num) + '_mapping.txt'), max_work_size, max_school_size)
     # read infection parameters
@@ -789,11 +791,16 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
 
     #write_person_to_loc_assigment(sim.model, sim_num)
     # output object
-    history = History()
+    history = abm.HistoryLean() # before: History()
     start_advance = time.time()
     # advance simulation until tmax
     print("we will advance now")
     sim.advance(tmax, history) # history einfügen TODO AS
+    times, agg = history.log
+    comps = pd.DataFrame([a[0] for a in agg], columns=["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"])
+    comps.insert(0, "t", times)
+    comps.to_csv(os.path.join(output_path, str(number_to_save) + '_comps_damping_compact_version.csv'), sep=" ", index=False)
+    presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6)   # z. B. Arbeitende: presence[:, 2, :]
     print("advancing works!")
     end_advance = time.time()
     print(
