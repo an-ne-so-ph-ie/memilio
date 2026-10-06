@@ -247,7 +247,7 @@ void write_infection_paths(std::string filename, mio::abm::Model& model, mio::ab
             fprintf(file, "%d ", person.get_id().get());
             if (person.get_infection_state(tmax) == mio::abm::InfectionState::Susceptible) {
                 fprintf(file, "%.14f ", tmax.hours());
-                for (auto i = 0; i < static_cast<int>(mio::abm::InfectionState::Count); ++i) {
+                for (auto i = 1; i < static_cast<int>(mio::abm::InfectionState::Count); ++i) {
                     fprintf(file, "0 ");
                 }
             }
@@ -922,6 +922,19 @@ PYBIND11_MODULE(_simulation_abm, m)
         .def("get_infection_start", [](const mio::abm::Infection& infection) {
             return infection.get_start_date();
         });
+        //neu hinzugefügt, um die Anfangsdistribution richtig nach hinten zu schieben
+        .def(py::init([](mio::abm::Model& model, mio::abm::Person& person, mio::abm::VirusVariant variant,
+                 mio::abm::TimePoint init_date, mio::abm::InfectionState init_state,
+                 double rel_min, double rel_max, bool detected) {
+         auto rng = mio::abm::PersonalRandomNumberGenerator(model.get_rng(), person);
+         mio::abm::InitialInfectionStateDistribution init_state_dist(
+             {mio::abm::VirusVariant::Count, mio::AgeGroup(model.parameters.get_num_groups())},
+             mio::AbstractParameterDistribution(mio::ParameterDistributionUniform(rel_min, rel_max)));
+         return mio::abm::Infection(rng, variant, person.get_age(), model.parameters, init_date, init_state,
+                                    init_state_dist, person.get_latest_protection(init_date), detected);
+        }),
+        py::arg("model"), py::arg("person"), py::arg("variant"), py::arg("init_date"), py::arg("init_state"),
+        py::arg("rel_min"), py::arg("rel_max"), py::arg("detected") = false)
         //.def("get_infection_start", &mio::abm::Infection::get_start_date()) //get_infection_start
         //.def("get_time_in_state", [](mio::abm::Infection& self, mio::abm::InfectionState state) {
             //return self.get_time_in_state(state);
