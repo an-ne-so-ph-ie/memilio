@@ -553,10 +553,9 @@ struct BasicShoppingRate {
     //using Type = CustomIndexArray<UncertainValue<>, AgeGroup>;
     using Type =
         DampingMatrixExpression<ScalarType, Dampings<ScalarType, Damping<ScalarType, ColumnVectorShape<ScalarType>>>>;
-    static auto get_default(AgeGroup /*size*/)
+    static auto get_default(AgeGroup size)
     {
-        //return Type({size}, 1.0);
-        return Type(Eigen::VectorX<ScalarType>::Constant(1, 1.0));
+        return Type(Eigen::VectorX<ScalarType>::Constant((size_t)size, 1.0));
     }
     static std::string name()
     {
