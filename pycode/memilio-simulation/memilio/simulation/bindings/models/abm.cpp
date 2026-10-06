@@ -921,7 +921,7 @@ PYBIND11_MODULE(_simulation_abm, m)
         }))
         .def("get_infection_start", [](const mio::abm::Infection& infection) {
             return infection.get_start_date();
-        });
+        })
         //neu hinzugefügt, um die Anfangsdistribution richtig nach hinten zu schieben
         .def(py::init([](mio::abm::Model& model, mio::abm::Person& person, mio::abm::VirusVariant variant,
                  mio::abm::TimePoint init_date, mio::abm::InfectionState init_state,
@@ -934,7 +934,7 @@ PYBIND11_MODULE(_simulation_abm, m)
                                     init_state_dist, person.get_latest_protection(init_date), detected);
         }),
         py::arg("model"), py::arg("person"), py::arg("variant"), py::arg("init_date"), py::arg("init_state"),
-        py::arg("rel_min"), py::arg("rel_max"), py::arg("detected") = false)
+        py::arg("rel_min"), py::arg("rel_max"), py::arg("detected") = false);
         //.def("get_infection_start", &mio::abm::Infection::get_start_date()) //get_infection_start
         //.def("get_time_in_state", [](mio::abm::Infection& self, mio::abm::InfectionState state) {
             //return self.get_time_in_state(state);
