@@ -43,6 +43,25 @@
 
 namespace py = pybind11;
 
+//von AS ergänzt
+struct LogContactsPerAge : mio::LogAlways {
+    // pro Stunde: Personen je Zustand (8) und je Ortstyp × Altersgruppe (11 × 6)
+    using Type = std::tuple<std::vector<int>, std::vector<int>>;
+    static Type log(const mio::abm::Simulation<>& sim)
+    {
+        const auto& model  = sim.get_model();
+        const size_t n_age = model.parameters.get_num_groups();
+        std::vector<int> states(static_cast<size_t>(mio::abm::InfectionState::Count), 0);
+        std::vector<int> presence(static_cast<size_t>(mio::abm::LocationType::Count) * n_age, 0);
+        for (auto&& p : model.get_persons()) {
+            states[static_cast<size_t>(p.get_infection_state(sim.get_time()))] += 1;
+            presence[static_cast<size_t>(p.get_location_type()) * n_age + p.get_age().get()] += 1;
+        }
+        return {states, presence};
+    }
+};
+using HistoryLean = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated>;
+
 struct LogNewInfectionsAndShedding : mio::LogAlways { //AS
     using Type = std::tuple<
         int,
@@ -1037,8 +1056,13 @@ PYBIND11_MODULE(_simulation_abm, m)
         .def("advance",
              static_cast<void (mio::abm::Simulation<>::*)(mio::abm::TimePoint)>(&mio::abm::Simulation<>::advance),
              py::arg("tmax"))
+        .def("advance", &mio::abm::Simulation<>::advance<HistoryLean>) //für AS Contact Logger
         .def_property_readonly("model", py::overload_cast<>(&mio::abm::Simulation<>::get_model));
-
+    
+        //von AS
+    pymio::bind_class<HistoryLean, pymio::EnablePickling::Never>(m, "HistoryLean")
+      .def(py::init<>())
+      .def_property_readonly("log", [](HistoryLean& self) { return self.get_log(); });
 
     pymio::bind_class<mio::History<mio::DataWriterToMemory, LogTimePoint, LogLocationIds,
                                    LogPersonsPerLocationAndInfectionTime, LogAgentIds>,
@@ -1076,6 +1100,11 @@ PYBIND11_MODULE(_simulation_abm, m)
         py::return_value_policy::reference_internal);
     
     m.def("initialize_model", &initialize_model, py::return_value_policy::reference_internal);
+
+    m.def("set_TimeInfectedSevereToDead", //sichergehen, dass der Parameter gesetzt wird und so passt
+        [](mio::abm::Parameters& p, mio::abm::VirusVariant v, mio::AgeGroup age, double my, double sigma) {
+            p.get<mio::abm::TimeInfectedSevereToDead>()[{v, age}] = mio::ParameterDistributionLogNormal(my, sigma);
+        });
 
     m.def(
         "set_viral_load_parameters",
