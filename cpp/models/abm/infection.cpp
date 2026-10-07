@@ -175,7 +175,8 @@ TimeSpan Infection::get_time_in_state(InfectionState state)
                                 return (inf.second == state);
                             });
     // infection state is not part of infection course
-    if (pos == m_infection_course.end()) {
+    // if it isn't in the simulation or if it is already in the last state (R/D)
+    if (pos == m_infection_course.end() || std::next(pos) == m_infection_course.end()) {
         return TimeSpan(0);
     }
     return ((pos + 1)->first - pos->first);

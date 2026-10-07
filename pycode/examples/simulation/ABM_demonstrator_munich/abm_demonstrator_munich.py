@@ -349,11 +349,11 @@ def assign_infection_states(model, t0, exposed_pct, infected_no_symptoms_pct, in
                      (parameters.loc[param_string2].dev**2)/2.) / 4.)
                 shift_rate = np.minimum(shift_rate1, shift_rate2)
             # shift = False
-            #person.add_new_infection(Infection(
-            #    model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False), t0) #entfernt davon für München: shift, shift_rate, weil wird auf main nicht verwendet
+            person.add_new_infection(Infection(
+                model, person, VirusVariant.Wildtype, t0, abm.InfectionState(infection_state), False), t0) #entfernt davon für München: shift, shift_rate, weil wird auf main nicht verwendet
             # das geändert, damit die Anfangsdistribution bisschen verchoben wird
-            person.add_new_infection(Infection(model, person, VirusVariant.Wildtype, t0,
-                                   abm.InfectionState(infection_state), 0.0, 0.5, False), t0)
+            #person.add_new_infection(Infection(model, person, VirusVariant.Wildtype, t0,
+             #                      abm.InfectionState(infection_state), 0.0, 0.5, False), t0)
 
 
 def save_persons(trip_file):
