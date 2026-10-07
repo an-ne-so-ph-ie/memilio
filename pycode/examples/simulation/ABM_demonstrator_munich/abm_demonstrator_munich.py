@@ -679,8 +679,8 @@ def write_person_to_loc_assigment(model, sim_num):
 
 def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
                          work_closure=0.37, school_closure=1.0):
-    print("Simulation:", sim_num)
-    print("Seed:", number_to_save)
+    print("Simulation:", number_to_save)
+    print("Seed:", sim_num)
     if number_to_save is None:
           number_to_save = sim_num
     mio.abm.set_log_level_warn()
@@ -702,6 +702,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     start_init = time.time()
     # set seed for initial infection states
     np.random.seed(specs["seed"][sim_num])
+    print("Seed specifically:", specs["seed"][sim_num])
     # starting time point
     t0 = abm.TimePoint(0)
     # end time point of simulation
@@ -796,11 +797,16 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # advance simulation until tmax
     print("we will advance now")
     sim.advance(tmax, history) # history einfügen TODO AS
-    times, agg = history.log
+    times, agg, coho = history.log
     comps = pd.DataFrame([a[0] for a in agg], columns=["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"])
     comps.insert(0, "t", times)
     comps.to_csv(os.path.join(output_path, str(number_to_save) + '_comps_damping_compact_version.csv'), sep=" ", index=False)
-    presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6)   # z. B. Arbeitende: presence[:, 2, :]
+    presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6) 
+    contact_hours = np.array(coho).reshape(len(coho), 11, 6, 6)               
+    day = np.arange(len(times)) // 24
+    contacts_daily = np.array([contact_hours[day == d].sum(0) for d in range(day.max())]) 
+    np.save(os.path.join(output_path, f"{number_to_save}_presence.npy"), presence)
+    np.save(os.path.join(output_path, f"{number_to_save}_contacts_daily.npy"), contacts_daily)
     print("advancing works!")
     end_advance = time.time()
     print(

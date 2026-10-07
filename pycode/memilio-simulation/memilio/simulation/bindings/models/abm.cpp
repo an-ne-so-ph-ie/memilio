@@ -78,6 +78,33 @@ struct LogAggregated : mio::LogAlways {
     }
 };
 
+  struct LogContactHours : mio::LogAlways {
+      // pro Stunde: Kontaktstunden je Ortstyp × Alter a × Alter b (11 × 6 × 6)
+      using Type = std::vector<double>;
+      static Type log(const mio::abm::Simulation<>& sim)
+      {
+          const auto& model  = sim.get_model();
+          const size_t n_age = model.parameters.get_num_groups();
+          const size_t n_lt  = static_cast<size_t>(mio::abm::LocationType::Count);
+          std::unordered_map<uint32_t, std::pair<size_t, std::vector<int>>> per_loc;
+          for (auto&& p : model.get_persons()) {
+              auto& entry = per_loc[p.get_location().get()];
+              if (entry.second.empty()) {
+                  entry = {static_cast<size_t>(p.get_location_type()), std::vector<int>(n_age, 0)};
+              }
+              entry.second[p.get_age().get()] += 1;
+          }
+          std::vector<double> c(n_lt * n_age * n_age, 0.0);
+          for (const auto& [id, entry] : per_loc) {
+              const auto& [type, n] = entry;
+              for (size_t a = 0; a < n_age; ++a)
+                  for (size_t b = 0; b < n_age; ++b)
+                      c[(type * n_age + a) * n_age + b] += double(n[a]) * (n[b] - (a == b ? 1 : 0));
+          }
+          return c;
+      }
+  };
+
 struct LogNewInfectionsAndShedding : mio::LogAlways { //AS
     using Type = std::tuple<
         int,
@@ -302,7 +329,7 @@ void write_infection_paths(std::string filename, mio::abm::Model& model, mio::ab
                 if (person.get_infection_state(tmax) == mio::abm::InfectionState::Recovered) {
                     if (time_S.hours() == 0) {
                         time_R = 
-                            mio::abm::TimePoint(0) + tmax - (person.get_infection().get_infection_start() + t_Infected)
+                            mio::abm::TimePoint(0) + (tmax - (person.get_infection().get_infection_start() + t_Infected));
                             //tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
                             // muss geändert werden, weil Anfang ja verschoben worden ist
                     }
@@ -313,7 +340,7 @@ void write_infection_paths(std::string filename, mio::abm::Model& model, mio::ab
                 else if (person.get_infection_state(tmax) == mio::abm::InfectionState::Dead) {
                     if (time_S.hours() == 0) {
                         time_D =
-                            mio::abm::TimePoint(0) + tmax - (person.get_infection().get_infection_start() + t_Infected)
+                            mio::abm::TimePoint(0) + (tmax - (person.get_infection().get_infection_start() + t_Infected));
                             //tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
                     }
                     else {
@@ -961,7 +988,7 @@ PYBIND11_MODULE(_simulation_abm, m)
         }))
         .def("get_infection_start", [](const mio::abm::Infection& infection) {
             return infection.get_start_date();
-        })
+        });
         //neu hinzugefügt, um die Anfangsdistribution richtig nach hinten zu schieben
         // .def(py::init([](mio::abm::Model& model, mio::abm::Person& person, mio::abm::VirusVariant variant,
         //          mio::abm::TimePoint init_date, mio::abm::InfectionState init_state,
@@ -973,8 +1000,8 @@ PYBIND11_MODULE(_simulation_abm, m)
         //  return mio::abm::Infection(rng, variant, person.get_age(), model.parameters, init_date, init_state,
         //                             init_state_dist, person.get_latest_protection(init_date), detected);
         // }),
-        py::arg("model"), py::arg("person"), py::arg("variant"), py::arg("init_date"), py::arg("init_state"),
-        py::arg("rel_min"), py::arg("rel_max"), py::arg("detected") = false);
+        //py::arg("model"), py::arg("person"), py::arg("variant"), py::arg("init_date"), py::arg("init_state"),
+        //py::arg("rel_min"), py::arg("rel_max"), py::arg("detected") = false);
         //.def("get_infection_start", &mio::abm::Infection::get_start_date()) //get_infection_start
         //.def("get_time_in_state", [](mio::abm::Infection& self, mio::abm::InfectionState state) {
             //return self.get_time_in_state(state);

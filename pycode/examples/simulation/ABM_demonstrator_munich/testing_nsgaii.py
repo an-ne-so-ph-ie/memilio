@@ -68,7 +68,7 @@ def run_one_abm_process(job):
 
         
         n_persons_abm = adm.run_abm_simulation(sim_seed_index, number_to_save, path_output_folder, work_closure, school_closure)
-        df = pd.read_csv(os.path.join(path_output_folder, f"{number_to_save}_comps_damping.csv"), sep=r"\s+")
+        df = pd.read_csv(os.path.join(path_output_folder, f"{number_to_save}_comps_damping_compact_version.csv"), sep=r"\s+")
         # TODO population size noch veränderbar machen
         infected_people = n_persons_abm - df["S"].iloc[-1]
 
