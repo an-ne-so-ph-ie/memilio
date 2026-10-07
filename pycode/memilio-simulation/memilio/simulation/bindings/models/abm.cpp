@@ -60,7 +60,23 @@ struct LogContactsPerAge : mio::LogAlways {
         return {states, presence};
     }
 };
-using HistoryLean = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated>;
+
+struct LogAggregated : mio::LogAlways {
+    // pro Stunde: Anzahl je Zustand (8) und Anwesende je Ortstyp × Altersgruppe (11 × 6)
+    using Type = std::tuple<std::vector<int>, std::vector<int>>;
+    static Type log(const mio::abm::Simulation<>& sim)
+    {
+        const auto& model  = sim.get_model();
+        const size_t n_age = model.parameters.get_num_groups();
+        std::vector<int> states(static_cast<size_t>(mio::abm::InfectionState::Count), 0);
+        std::vector<int> presence(static_cast<size_t>(mio::abm::LocationType::Count) * n_age, 0);
+        for (auto&& p : model.get_persons()) {
+            states[static_cast<size_t>(p.get_infection_state(sim.get_time()))] += 1;
+            presence[static_cast<size_t>(p.get_location_type()) * n_age + p.get_age().get()] += 1;
+        }
+        return {states, presence};
+    }
+};
 
 struct LogNewInfectionsAndShedding : mio::LogAlways { //AS
     using Type = std::tuple<
@@ -112,6 +128,8 @@ struct LogTimePoint : mio::LogAlways { //AS
         return sim.get_time().hours();
     }
 };
+
+using HistorySmaller = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated, LogContactHours>; 
 
 //LocationId logger
 struct LogLocationIds : mio::LogOnce {//AS
@@ -283,8 +301,10 @@ void write_infection_paths(std::string filename, mio::abm::Model& model, mio::ab
                 auto t_Infected = time_E + time_INS + time_ISy + time_ISev + time_ICri;
                 if (person.get_infection_state(tmax) == mio::abm::InfectionState::Recovered) {
                     if (time_S.hours() == 0) {
-                        time_R =
-                            tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
+                        time_R = 
+                            mio::abm::TimePoint(0) + tmax - (person.get_infection().get_infection_start() + t_Infected)
+                            //tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
+                            // muss geändert werden, weil Anfang ja verschoben worden ist
                     }
                     else {
                         time_R = tmax - time_S - t_Infected;
@@ -293,7 +313,8 @@ void write_infection_paths(std::string filename, mio::abm::Model& model, mio::ab
                 else if (person.get_infection_state(tmax) == mio::abm::InfectionState::Dead) {
                     if (time_S.hours() == 0) {
                         time_D =
-                            tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
+                            mio::abm::TimePoint(0) + tmax - (person.get_infection().get_infection_start() + t_Infected)
+                            //tmax - t_Infected + (person.get_infection().get_infection_start() - mio::abm::TimePoint(0));
                     }
                     else {
                         time_D = tmax - time_S - t_Infected;
@@ -1056,13 +1077,13 @@ PYBIND11_MODULE(_simulation_abm, m)
         .def("advance",
              static_cast<void (mio::abm::Simulation<>::*)(mio::abm::TimePoint)>(&mio::abm::Simulation<>::advance),
              py::arg("tmax"))
-        .def("advance", &mio::abm::Simulation<>::advance<HistoryLean>) //für AS Contact Logger
+        .def("advance", &mio::abm::Simulation<>::advance<HistorySmaller>) //für AS Contact Logger
         .def_property_readonly("model", py::overload_cast<>(&mio::abm::Simulation<>::get_model));
     
         //von AS
-    pymio::bind_class<HistoryLean, pymio::EnablePickling::Never>(m, "HistoryLean")
+    pymio::bind_class<HistorySmaller, pymio::EnablePickling::Never>(m, "HistorySmaller")
       .def(py::init<>())
-      .def_property_readonly("log", [](HistoryLean& self) { return self.get_log(); });
+      .def_property_readonly("log", [](HistorySmaller& self) { return self.get_log(); });
 
     pymio::bind_class<mio::History<mio::DataWriterToMemory, LogTimePoint, LogLocationIds,
                                    LogPersonsPerLocationAndInfectionTime, LogAgentIds>,

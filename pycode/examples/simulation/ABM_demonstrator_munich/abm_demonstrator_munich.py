@@ -713,7 +713,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # initialize model
     abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join( #epersons_scaled
         input_path, 'hospitals.csv'), os.path.join(
-        output_path, str(sim_num) + '_mapping.txt'), max_work_size, max_school_size)
+        output_path, str(number_to_save) + '_mapping.txt'), max_work_size, max_school_size)
     # read infection parameters
     parameters = pd.read_csv(os.path.join(
         input_path, 'parameter_table.csv'), index_col=0)
@@ -787,11 +787,11 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     
     # write size per location
     abm.write_size_per_location(os.path.join(
-        output_path, str(sim_num) + '_size_per_loc_damping.txt'), sim.model)
+        output_path, str(number_to_save) + '_size_per_loc_damping.txt'), sim.model)
 
     #write_person_to_loc_assigment(sim.model, sim_num)
     # output object
-    history = abm.HistoryLean() # before: History()
+    history = abm.HistorySmaller() # before: History()
     start_advance = time.time()
     # advance simulation until tmax
     print("we will advance now")
@@ -809,18 +809,18 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # write infection paths per agent to file
     start_o1 = time.time()
     abm.save_infection_paths(os.path.join(
-        output_path, str(sim_num) + '_infection_paths_damping.txt'), sim.model, tmax)
+        output_path, str(number_to_save) + '_infection_paths_damping.txt'), sim.model, tmax)
     end_o1 = time.time()
     print(f'Time writing infection paths txt: {end_o1 - start_o1} seconds')
     total_output_time += (end_o1 - start_o1)
-    # write compartment size per time step to file
-    start_o2 = time.time()
-    abm.save_comp_output(os.path.join(
-        output_path, str(sim_num) + '_comps_damping.csv'), sim.model, history)
-    abm.write_contacts(os.path.join(output_path, str(sim_num) + '_contacts_damping.csv'), history) #TODO AS
-    end_o2 = time.time()
-    print(f'Time writing comps csv: {end_o2 - start_o2} seconds')
-    total_output_time += (end_o2 - start_o2)
+    # write compartment size per time step to file (gelöscht für jetzt, um Ausgaben zu reduzieren)
+    #start_o2 = time.time()
+    #abm.save_comp_output(os.path.join(
+    #    output_path, str(sim_num) + '_comps_damping.csv'), sim.model, history)
+    #abm.write_contacts(os.path.join(output_path, str(sim_num) + '_contacts_damping.csv'), history) #TODO AS
+    #end_o2 = time.time()
+    #print(f'Time writing comps csv: {end_o2 - start_o2} seconds')
+    #total_output_time += (end_o2 - start_o2)
     # # write results to h5 file v1. The file has two data sets for every AgentId which are:
     # # - LocationId at every time step
     # # - Time since transmission at every time step
@@ -882,6 +882,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
 
 import os
 from concurrent.futures import ProcessPoolExecutor
+import datetime
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(
@@ -895,7 +896,8 @@ if __name__ == "__main__":
     sim_times = []
     output_times = []
     #run_abm_simulation(1,  **args.__dict__)
-    o = run_abm_simulation(1,  **args.__dict__)
+    path_output = os.path.join(os.getcwd(), f"output/only_abm_run_to_test_{datetime.date.today()}")
+    o = run_abm_simulation(1, path_output_folder = path_output)
     #     sim_nums.append(o[0])
     #     init_times.append(o[1])
     #     sim_times.append(o[2])

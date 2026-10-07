@@ -70,7 +70,7 @@ bool Person::is_infected(TimePoint t) const
     }
     // subject to change if Recovered is removed
     if (m_infections.back().get_infection_state(t) == InfectionState::Susceptible ||
-        m_infections.back().get_infection_state(t) == InfectionState::Recovered) ||
+        m_infections.back().get_infection_state(t) == InfectionState::Recovered ||
         m_infections.back().get_infection_state(t) == InfectionState::Dead) {
         return false;
     }
