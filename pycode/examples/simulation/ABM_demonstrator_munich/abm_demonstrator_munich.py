@@ -59,7 +59,7 @@ contact_files = {
     abm.LocationType.BasicsShop: ("baseline_other.txt", 0.4),
 }
 
-test_types = {"antigen": (abm.TestType.Antigen, 0.8, 0.88, 30, 1), "pcr": (abm.TestType.PCR, 0.9, 0.99, 2880, 2)}
+test_types = {"antigen": (abm.TestType.Antigen, 0.71, 0.996, 30, 1), "pcr": (abm.TestType.PCR, 0.9, 0.995, 2880, 2)}
 
 def set_contact_rates(model, contact_path, scaling_file):
     scaling_table = pd.read_csv(scaling_file, index_col=0)
@@ -783,13 +783,16 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     sim.model.add_infection_rate_damping(
         abm.TimePoint(abm.days(specs["damp_time"][sim_num]).seconds), specs["damp_lvl"][sim_num])
 
+     # add closure for work, event, shop and school locations at day 5
+    # baseline: wird dann ab dem ersten Änderungstag ersetzt
+    sim.model.add_work_damping(t0 + abm.days(19), work_closure)
+    sim.model.add_school_damping(t0 + abm.days(14), school_closure)
+    sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
+    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+
     if periods is not None:
         add_interventions(sim.model, t0, change_days, periods, simulation_days)
-    # add closure for work, event, shop and school locations at day 5
-    #sim.model.add_work_damping(t0 + abm.days(19), work_closure)
-    #sim.model.add_school_damping(t0 + abm.days(14), school_closure)
-    #sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
-    #sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+   
 
     # sim.model.add_location_closure(abm.TimePoint(
     #     abm.days(19).seconds), abm.LocationType.Work, 0.37, location_closure_scheme_random)
@@ -936,27 +939,43 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     return len(sim.model.persons)
 
 
-import os
-from concurrent.futures import ProcessPoolExecutor
-import datetime
+
 
 if __name__ == "__main__":
-    arg_parser = argparse.ArgumentParser(
-        'abm demonstrator',
-        description='Example demonstrating the agent-based model for a synthetic population of Munich.')
-    args = arg_parser.parse_args()
-    # set LogLevel
-    mio.abm.set_log_level_warn()
-    sim_nums = []
-    init_times = []
-    sim_times = []
-    output_times = []
-    #run_abm_simulation(1,  **args.__dict__)
-    path_output = os.path.join(os.getcwd(), f"output/only_abm_run_to_test_{datetime.date.today()}")
-    o = run_abm_simulation(1, path_output_folder = path_output)
-    #     sim_nums.append(o[0])
+    import os
+    from concurrent.futures import ProcessPoolExecutor
+    import datetime
+    import multiprocessing as mp
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    # arg_parser = argparse.ArgumentParser(
+    #     'abm demonstrator',
+    #     description='Example demonstrating the agent-based model for a synthetic population of Munich.')
+    # args = arg_parser.parse_args()
+    # # set LogLevel
+    # mio.abm.set_log_level_warn()
+    # sim_nums = []
+    # init_times = []
+    # sim_times = []
+    # output_times = []
+    # #run_abm_simulation(1,  **args.__dict__)
+    # path_output = os.path.join(os.getcwd(), f"output/only_abm_run_to_test_{datetime.date.today()}")
+    # o = run_abm_simulation(1, path_output_folder = path_output)
+    # #     sim_nums.append(o[0])
     #     init_times.append(o[1])
     #     sim_times.append(o[2])
     #     output_times.append(o[3])
     # write_time_to_file(sim_nums, init_times, sim_times, output_times,
     #                    sys.path[0] + '/output/timings.txt')
+    mio.abm.set_log_level_warn()
+    path_output = os.path.join(os.getcwd(), "output", f"baseline_contacts_{datetime.date.today()}")
+    os.makedirs(path_output, exist_ok=True)
+    number_of_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", 25))
+
+    with ProcessPoolExecutor(max_workers=number_of_cpus, mp_context=mp.get_context("spawn"),
+                             max_tasks_per_child=1) as executor:
+        runs = {executor.submit(run_abm_simulation, index, index, path_output): index for index in range(1, 101)}
+        for run in as_completed(runs):
+            try:
+                run.result()
+            except Exception as error:
+                print(f"Run {runs[run]} didn't work because: {error!r}", flush=True)
