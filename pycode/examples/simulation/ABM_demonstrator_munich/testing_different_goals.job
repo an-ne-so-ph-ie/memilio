@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_goals_testing"
+#SBATCH -o log_goals_testing_munich_%j.out
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH -c 48
+#SBATCH --mem 768G
+
+export OMP_NUM_THREADS=1
+export OMP_DYNAMIC=FALSE
+
+echo "CPUs: $SLURM_CPUS_PER_TASK"
+
+python testing_different_goals_main.py
+
+echo "Python exit code: $?"
+
+sacct -j $SLURM_JOB_ID --format=JobID,State,ExitCode,Elapsed,MaxRSS,ReqMem
