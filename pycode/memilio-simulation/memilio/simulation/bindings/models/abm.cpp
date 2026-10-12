@@ -1073,6 +1073,12 @@ PYBIND11_MODULE(_simulation_abm, m)
          reduce_shopping_rate(t, factor, model.parameters);
         },
          py::arg("t"), py::arg("factor"))
+        
+        .def("add_testing_scheme",
+             [](mio::abm::Model& self, mio::abm::LocationType type, const mio::abm::TestingScheme& scheme) {
+                 self.get_testing_strategy().add_scheme(type, scheme);
+             },
+             py::arg("location_type"), py::arg("scheme"))
 
         .def_property_readonly("locations", py::overload_cast<>(&mio::abm::Model::get_locations, py::const_),
                                py::keep_alive<1, 0>{}) //keep this model alive while contents are referenced in ranges

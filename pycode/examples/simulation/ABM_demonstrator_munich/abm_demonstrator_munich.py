@@ -47,13 +47,55 @@ age_group_35_to_59 = AgeGroup(3)
 age_group_60_to_79 = AgeGroup(4)
 age_group_80_plus = AgeGroup(5)
 
+# damit es aussieht wie bei inside
+kappa_conversion_factor = 1.0
+
+contact_files = {
+    abm.LocationType.Home: ("baseline_home.txt", 1.0),
+    abm.LocationType.School: ("baseline_school_pf_aver.txt", 1.0),
+    abm.LocationType.Work: ("baseline_work.txt", 1.0),
+    # Aufteilung der Other-Matrix im Verhältnis 1.5 : 1 nach Kerkmann et al., normiert auf Anteile, die sich zu 1 addieren (0.6 / 0.4)
+    abm.LocationType.SocialEvent: ("baseline_other.txt", 0.6),
+    abm.LocationType.BasicsShop: ("baseline_other.txt", 0.4),
+}
+
+test_types = {"antigen": (abm.TestType.Antigen, 0.8, 0.88, 30, 1), "pcr": (abm.TestType.PCR, 0.9, 0.99, 2880, 2)}
+
+def set_contact_rates(model, contact_path, scaling_file):
+    scaling_table = pd.read_csv(scaling_file, index_col=0)
+    scaled_matrices = {}
+    for location_type, (file_name, share) in contact_files.items():
+        matrix = share * np.loadtxt(os.path.join(contact_path, file_name))
+        row_scaling = scaling_table.loc[location_type.name].to_numpy(dtype=float)
+        scaled_matrices[location_type] = row_scaling[:, np.newaxis] * matrix
+    for location in model.locations:
+        if location.type in scaled_matrices:
+            location.infection_parameters.ContactRates.baseline = scaled_matrices[location.type]
+
+def add_interventions(model, start_time, change_days, periods, simulation_days):
+    period_days = [(change_days[0], change_days[1]), (change_days[1], simulation_days)]
+    for (start_day, end_day), period in zip(period_days, periods):
+        period_start = start_time + abm.days(int(start_day))
+        period_end = start_time + abm.days(int(end_day))
+        model.add_work_damping(period_start, period["home_office"])
+        model.add_school_damping(period_start, period["school_closure"])
+        model.add_socialEvent_damping(period_start, period["social_events"])
+        for location, location_type in (("work", abm.LocationType.Work), ("school", abm.LocationType.School)):
+            if period[f"{location}_test"] == "none":
+                continue
+            test_type, sensitivity, specificity, minutes_to_result, validity_days = test_types[period[f"{location}_test"]]
+            test_parameters = abm.TestParameters(sensitivity, specificity, abm.minutes(minutes_to_result), test_type)
+            testing_scheme = abm.TestingScheme(abm.TestingCriteria([], []), abm.days(validity_days), period_start, period_end,
+                                               test_parameters, float(period[f"probability_test_{location}"]))
+            model.add_testing_scheme(location_type, testing_scheme) 
+
 
 def set_infection_parameters(parameters, kappa):
 
     infection_params = abm.Parameters(num_age_groups)
 
-    infection_params.InfectionRateFromViralShed[VirusVariant.Wildtype] = kappa
-    infection_params.AerosolTransmissionRates[VirusVariant.Wildtype] = 1.0
+    infection_params.InfectionRateFromViralShed[VirusVariant.Wildtype] = kappa * kappa_conversion_factor
+    infection_params.AerosolTransmissionRates[VirusVariant.Wildtype] = 0.0 #davor 1.0
     infection_params.QuarantineEffectiveness = 0.0
     all_ages = [age_group_0_to_4, age_group_5_to_15, age_group_16_to_34,
                 age_group_35_to_59, age_group_60_to_79, age_group_80_plus]
@@ -90,6 +132,7 @@ def set_infection_parameters(parameters, kappa):
         parameters.loc["beta"].value) # before: two times the alpha, two times the beta
     infection_params.SymptomaticPerInfectedNoSymptoms[VirusVariant.Wildtype,
                                                       age_group_0_to_4] =  parameters.loc["Age0to4_SymptomsPerInfectedNoSymptoms"].value
+    # inside severity_protection_factor = 0.5
     infection_params.SeverePerInfectedSymptoms[VirusVariant.Wildtype,
                                                age_group_0_to_4] =  0.5 * parameters.loc["Age0to4_SeverePerInfectedSymptoms"].value
     infection_params.CriticalPerInfectedSevere[VirusVariant.Wildtype,
@@ -678,7 +721,7 @@ def write_person_to_loc_assigment(model, sim_num):
     f.close()
 
 def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
-                         work_closure=0.37, school_closure=1.0):
+                         work_closure=0.37, school_closure=1.0, simulation_days=92,  change_days=None, periods=None):
     print("Simulation:", number_to_save)
     print("Seed:", sim_num)
     if number_to_save is None:
@@ -706,7 +749,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # starting time point
     t0 = abm.TimePoint(0)
     # end time point of simulation
-    tmax = t0 + abm.days(92)
+    tmax = t0 + abm.days(simulation_days)
     # create simulation with starting timepoint and number of age groups
     sim = abm.Simulation(t0, num_age_groups)
     # set seeds for simulation
@@ -715,6 +758,10 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     abm.initialize_model(sim.model, input_path + 'persons_scaled.csv', os.path.join( #epersons_scaled
         input_path, 'hospitals.csv'), os.path.join(
         output_path, str(number_to_save) + '_mapping.txt'), max_work_size, max_school_size)
+    # initialize contact matrizes
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    contact_path = os.path.join(script_directory, '..', '..', '..', '..', 'data', 'Germany', 'contacts')
+    set_contact_rates(sim.model, contact_path, os.path.join(input_path, 'contact_scaling.csv'))
     # read infection parameters
     parameters = pd.read_csv(os.path.join(
         input_path, 'parameter_table.csv'), index_col=0)
@@ -735,11 +782,14 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # add dampings
     sim.model.add_infection_rate_damping(
         abm.TimePoint(abm.days(specs["damp_time"][sim_num]).seconds), specs["damp_lvl"][sim_num])
+
+    if periods is not None:
+        add_interventions(sim.model, t0, change_days, periods, simulation_days)
     # add closure for work, event, shop and school locations at day 5
-    sim.model.add_work_damping(t0 + abm.days(19), work_closure)
-    sim.model.add_school_damping(t0 + abm.days(14), school_closure)
-    sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
-    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+    #sim.model.add_work_damping(t0 + abm.days(19), work_closure)
+    #sim.model.add_school_damping(t0 + abm.days(14), school_closure)
+    #sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
+    #sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
 
     # sim.model.add_location_closure(abm.TimePoint(
     #     abm.days(19).seconds), abm.LocationType.Work, 0.37, location_closure_scheme_random)
