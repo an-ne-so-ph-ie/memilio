@@ -542,7 +542,7 @@ struct QuarantineEffectiveness {
     }
     static std::string name()
     {
-        return "QuarantineEffectivness";
+        return "QuarantineEffectiveness";
     }
 };
 
