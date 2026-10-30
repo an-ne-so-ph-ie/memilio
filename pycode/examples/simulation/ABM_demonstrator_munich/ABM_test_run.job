@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH -J "ABM_with_damping_15_02092026_256"
-#SBATCH -o log_ABM_with_damping_15_02092026_256.out 
+#SBATCH -J "ABM_baseline_contacts_25_kappa_19102026"
+#SBATCH -o log_ABM_baseline_contacts_kappa_100_%j.out 
 #SBATCH -p cn
 #SBATCH -N 1
-#SBATCH --mem 256G
-#SBATCH --cpus-per-task=4
+#SBATCH --mem 400G
+#SBATCH -c 25
 #SBATCH --ntasks=1
 
 export OMP_NUM_THREADS=1
@@ -14,5 +14,7 @@ export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
 
-python abm_demonstrator_munich.py
+for factor in 1; do
+    KAPPA_FACTOR=$factor NUMBER_OF_PARTICLES=100 python abm_demonstrator_munich.py
+done
 

@@ -38,6 +38,8 @@ dir(mabm)
 
 import pandas as pd
 
+kappa_conversion_factor = float(os.environ.get("KAPPA_FACTOR", 1.0))
+
 # number of age groups
 num_age_groups = 6
 age_group_0_to_4 = AgeGroup(0)
@@ -48,7 +50,7 @@ age_group_60_to_79 = AgeGroup(4)
 age_group_80_plus = AgeGroup(5)
 
 # damit es aussieht wie bei inside
-kappa_conversion_factor = 1.0
+#kappa_conversion_factor = 1.0
 
 contact_files = {
     abm.LocationType.Home: ("baseline_home.txt", 1.0),
@@ -731,7 +733,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     output_path = path_output_folder
     os.makedirs(output_path, exist_ok=True)
     specs = pd.read_csv(os.path.join(
-        input_path, "pop8_sel_particles.csv"), index_col=0, dtype={"damp_time": "int64"})
+        input_path, "pop8_sel_particles_kappa_1596.csv"), index_col=0, dtype={"damp_time": "int64"})
     local_outbreak = False
     # Possible schemes are 'random' and 'maximum'
     location_closure_scheme_random = 'random'
@@ -966,14 +968,15 @@ if __name__ == "__main__":
     #     output_times.append(o[3])
     # write_time_to_file(sim_nums, init_times, sim_times, output_times,
     #                    sys.path[0] + '/output/timings.txt')
+   
     mio.abm.set_log_level_warn()
-    path_output = os.path.join(os.getcwd(), "output", f"baseline_contacts_{datetime.date.today()}")
+    path_output = os.path.join(os.getcwd(), "output", f"baseline_contacts_{datetime.date.today()}_100_1596_1")
     os.makedirs(path_output, exist_ok=True)
     number_of_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", 25))
 
     with ProcessPoolExecutor(max_workers=number_of_cpus, mp_context=mp.get_context("spawn"),
                              max_tasks_per_child=1) as executor:
-        runs = {executor.submit(run_abm_simulation, index, index, path_output): index for index in range(1, 101)}
+        runs = {executor.submit(run_abm_simulation, index, index, path_output): index for index in range(1, 101)} #eig 101
         for run in as_completed(runs):
             try:
                 run.result()
