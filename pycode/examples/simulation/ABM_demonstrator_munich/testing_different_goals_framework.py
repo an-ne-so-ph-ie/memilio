@@ -40,9 +40,9 @@ simulation_end_day = 60
 earliest_change_day = 25               
 latest_change_day = 45
 reference_week_days = 7                
-number_of_seeds = 15         
+#number_of_seeds = 15         
 maximum_home_office = 0.7   
-seed_selection_random_seed = 2020
+#seed_selection_random_seed = 2020
 minimum_period_days = 7        
 
 # interventions 
@@ -78,10 +78,9 @@ variable_names = list(decision_variables)
 
 
 def selected_seed_indices():
-    particle_table = pd.read_csv(os.path.join(input_directory, "pop8_sel_particles.csv"), index_col=0)
-    random_generator = np.random.default_rng(seed_selection_random_seed)
-    chosen = random_generator.choice(particle_table.index.to_numpy(), size=number_of_seeds, replace=False)
-    return sorted(int(seed_index) for seed_index in chosen)
+    selection_file = os.environ.get("SELECTED_PARTICLES", "selected_particles.csv")
+    return pd.read_csv(os.path.join(input_directory, selection_file))["particle"].astype(int).tolist()
+
  
 
 def to_python_value(value):

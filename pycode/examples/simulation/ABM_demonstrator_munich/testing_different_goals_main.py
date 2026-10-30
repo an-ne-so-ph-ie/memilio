@@ -58,6 +58,22 @@ def run_one_abm_process(job):
     print(f"[DONE] simulation={number_to_save}, strategy={strategy_index}, seed={seed_index}, "
           f"f_I={result['f_I']:.0f}", flush=True)
     return result
+
+
+def run_jobs(jobs, available_cpus): # failed jobs run again
+    results = [{} for _ in jobs]
+    multiprocessing_context = mp.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=available_cpus, mp_context=multiprocessing_context,
+                             max_tasks_per_child=1) as executor:
+        jobs_to_execute = {executor.submit(run_one_abm_process, job): job_index for job_index, job in enumerate(jobs)}
+        for job_to_execute in as_completed(jobs_to_execute):
+            job_index = jobs_to_execute[job_to_execute]
+            try:
+                results[job_index] = job_to_execute.result()
+            except Exception as error:      # the process itself died, e.g. out of memory
+                print(f"[PROCESS FAILED] simulation={jobs[job_index][2]}: {error!r}", flush=True)
+    return results
+
  
  
 def pymoo_variables():
@@ -96,9 +112,11 @@ class AbmProblem(Problem):
         self.candidate_means = {}              
         self.generation = 0
         self.number_to_save_counter = 0
-        self.path_output_folder = os.path.join(os.getcwd(), "output", f"nsgaii_testing_goals{datetime.date.today()}")
+        self.path_output_folder = os.environ.get("OUTPUT_FOLDER", os.path.join(os.getcwd(), "output", f"nsgaii_48_12_testing_goals{datetime.date.today()}"))
         os.makedirs(self.path_output_folder, exist_ok=True)
         self.log_file = os.path.join(self.path_output_folder, "per_seed.csv")
+        if os.path.exists(self.log_file):
+            raise RuntimeError(f"{self.log_file} exists already, choose another OUTPUT_FOLDER")
         self.available_cpus = int(os.environ.get("SLURM_CPUS_PER_TASK", os.cpu_count() or 1))
         print(f"{self.available_cpus} available CPUs, seeds {self.seed_indices}, "
               f"output in {self.path_output_folder}", flush=True)
@@ -111,16 +129,23 @@ class AbmProblem(Problem):
                 jobs.append((strategy_index, seed_index, self.number_to_save_counter, strategy, self.path_output_folder))
         print(f"Generation {self.generation}: {len(population)} strategies, {len(jobs)} jobs.", flush=True)
  
-        results = [{} for _ in jobs]
-        multiprocessing_context = mp.get_context("spawn")
-        with ProcessPoolExecutor(max_workers=self.available_cpus, mp_context=multiprocessing_context,  max_tasks_per_child=1) as executor:
-            jobs_to_execute = {executor.submit(run_one_abm_process, job): job_index for job_index, job in enumerate(jobs)}
-            for job_to_execute in as_completed(jobs_to_execute):
-                job_index = jobs_to_execute[job_to_execute]
-                try:
-                    results[job_index] = job_to_execute.result()
-                except Exception as error:      # the process itself died, e.g. out of memory
-                    print(f"[PROCESS FAILED] simulation={jobs[job_index][2]}: {error!r}", flush=True)
+        results = run_jobs(jobs, self.available_cpus)
+        failed = [job_index for job_index, result in enumerate(results) if not result]
+        if failed:
+            print(f"{len(failed)} simulations failed, running them once more.", flush=True)
+            results_again = run_jobs([jobs[job_index] for job_index in failed], min(self.available_cpus, len(failed)))
+            for job_index, result in zip(failed, results_again):
+                results[job_index] = result
+            failed = [job_index for job_index, result in enumerate(results) if not result]
+        if failed:
+            failed_file = os.path.join(self.path_output_folder, f"failed_generation_{self.generation}.json")
+            with open(failed_file, "w") as file:
+                json.dump([{"strategy": jobs[job_index][0], "seed_index": int(jobs[job_index][1]),
+                            "number_to_save": jobs[job_index][2],
+                            **{name: tdgf.to_python_value(value) for name, value in jobs[job_index][3].items()}}
+                           for job_index in failed], file, indent=1)
+            raise RuntimeError(f"{len(failed)} simulations failed in generation {self.generation}, see {failed_file}")
+
  
         rows = [{"generation": self.generation, "strategy": job[0], "seed_index": job[1], "number_to_save": job[2], **result} for job, result in zip(jobs, results)]
         per_seed = pd.DataFrame(rows).reindex(columns=["generation", "strategy", "seed_index", "number_to_save"] + tdgf.objective_candidates)
@@ -129,14 +154,16 @@ class AbmProblem(Problem):
         if number_failed:
             print(f"There are {number_failed} failed simulations.", flush=True)
  
-        mean_per_strategy = per_seed.groupby("strategy")[tdgf.objective_candidates].mean()   
+        mean_per_strategy = per_seed.groupby("strategy")[tdgf.objective_candidates].mean()
         mean_per_strategy = mean_per_strategy.reindex(range(len(population)))
+        if mean_per_strategy[objectives].isna().any().any():
+            raise RuntimeError(f"NaN in objectives in generation {self.generation}")
         for strategy, (_, means) in zip(population, mean_per_strategy.iterrows()):
             self.candidate_means[strategy_key(strategy)] = means
-        output["F"] = np.nan_to_num(mean_per_strategy[objectives].to_numpy(), nan=1e12)   
+        output["F"] = mean_per_strategy[objectives].to_numpy()
         if constraints:
-            violations = np.column_stack([mean_per_strategy[objective] - limit for objective, limit in constraints.items()])
-            output["G"] = np.nan_to_num(violations, nan=1e12)
+            output["G"] = np.column_stack([mean_per_strategy[objective] - limit for objective, limit in constraints.items()])
+
         print(f"Finished generation {self.generation}.", flush=True)
         self.generation += 1
  
@@ -145,7 +172,9 @@ if __name__ == "__main__":
     start_nsgaii = time.time()
     abm_problem = AbmProblem()
     run_settings = {"objectives": objectives, "constraints": constraints, "population_size": population_size,
-                    "number_of_generations": number_of_generations, "seed_indices": abm_problem.seed_indices}
+                    "number_of_generations": number_of_generations, "seed_indices": abm_problem.seed_indices, 
+                    "kappa_factor": tdgf.abm_demonstrator_munich.kappa_conversion_factor, 
+                      "particle_file": tdgf.abm_demonstrator_munich.particle_file}
     with open(os.path.join(abm_problem.path_output_folder, "run_settings.json"), "w") as file:
         json.dump(run_settings, file, indent=1)
     repair = ChangeDayRepair()
