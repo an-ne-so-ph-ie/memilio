@@ -98,8 +98,10 @@ def objectives_of_run(path_output_folder, number_to_save, death_probability):
     """Objectives of one finished run from output files only"""
     output_prefix = os.path.join(path_output_folder, str(number_to_save))
     compartments = pd.read_csv(f"{output_prefix}_comps_damping_compact_version.csv", sep=" ")
-    presence = np.load(f"{output_prefix}_presence.npy")                                 
-    daily_contacts = np.load(f"{output_prefix}_contacts_daily.npy").sum(axis=(2, 3))    
+    presence = np.load(f"{output_prefix}_presence.npy")                   
+    contacts_file = f"{output_prefix}_contacts_daily.npy"
+    daily_contacts = np.load(contacts_file).sum(axis=(2, 3)) if os.path.exists(contacts_file) else None              
+    #daily_contacts = np.load(f"{output_prefix}_contacts_daily.npy").sum(axis=(2, 3))    
     infection_paths = pd.read_csv(f"{output_prefix}_infection_paths_damping.txt", sep=r"\s+")
     return compute_objectives(infection_paths, compartments, presence, daily_contacts, death_probability)
 

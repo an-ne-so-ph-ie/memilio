@@ -157,6 +157,7 @@ struct LogTimePoint : mio::LogAlways { //AS
 };
 
 using HistorySmaller = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated, LogContactHours>; 
+using HistoryOptimization = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated>;
 
 //LocationId logger
 struct LogLocationIds : mio::LogOnce {//AS
@@ -1111,9 +1112,13 @@ PYBIND11_MODULE(_simulation_abm, m)
              static_cast<void (mio::abm::Simulation<>::*)(mio::abm::TimePoint)>(&mio::abm::Simulation<>::advance),
              py::arg("tmax"))
         .def("advance", &mio::abm::Simulation<>::advance<HistorySmaller>) //für AS Contact Logger
+        .def("advance", &mio::abm::Simulation<>::advance<HistoryOptimization>) //für AS ohne LogContactHours
         .def_property_readonly("model", py::overload_cast<>(&mio::abm::Simulation<>::get_model));
     
         //von AS
+    pymio::bind_class<HistoryOptimization, pymio::EnablePickling::Never>(m, "HistoryOptimization")
+      .def(py::init<>())
+      .def_property_readonly("log", [](HistoryOptimization& self) { return self.get_log(); });
     pymio::bind_class<HistorySmaller, pymio::EnablePickling::Never>(m, "HistorySmaller")
       .def(py::init<>())
       .def_property_readonly("log", [](HistorySmaller& self) { return self.get_log(); });

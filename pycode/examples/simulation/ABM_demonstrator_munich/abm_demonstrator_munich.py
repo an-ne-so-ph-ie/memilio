@@ -846,28 +846,26 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
         output_path, str(number_to_save) + '_size_per_loc_damping.txt'), sim.model)
 
     #write_person_to_loc_assigment(sim.model, sim_num)
-    # output object
-    if os.environ.get("NO_HISTORY") == "1":
-        start_advance = time.time()
-        sim.advance(tmax)
-        print(f"Time for advancing simulation (no history): {time.time() - start_advance} seconds", flush=True)
-        return
-    history = abm.HistorySmaller() # before: History()
+    log_contacts = os.environ.get("LOG_CONTACTS") == "1"      # only for analysis runs
+    history = abm.HistorySmaller() if log_contacts else abm.HistoryOptimization()
     start_advance = time.time()
-    # advance simulation until tmax
-    print("we will advance now")
-    sim.advance(tmax, history) # history einfügen TODO AS
-    times, agg, coho = history.log
+    print("we will advance now",  flush=True)
+    sim.advance(tmax, history)
+    if log_contacts:
+        times, agg, coho = history.log
+    else:
+        times, agg = history.log
     comps = pd.DataFrame([a[0] for a in agg], columns=["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"])
     comps.insert(0, "t", times)
     comps.to_csv(os.path.join(output_path, str(number_to_save) + '_comps_damping_compact_version.csv'), sep=" ", index=False)
-    presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6) 
-    contact_hours = np.array(coho).reshape(len(coho), 11, 6, 6)               
-    day = np.arange(len(times)) // 24
-    contacts_daily = np.array([contact_hours[day == d].sum(0) for d in range(day.max())]) 
+    presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6)
     np.save(os.path.join(output_path, f"{number_to_save}_presence.npy"), presence)
-    np.save(os.path.join(output_path, f"{number_to_save}_contacts_daily.npy"), contacts_daily)
-    print("advancing works!")
+    if log_contacts:
+        contact_hours = np.array(coho).reshape(len(coho), 11, 6, 6)
+        day = np.arange(len(times)) // 24
+        contacts_daily = np.array([contact_hours[day == d].sum(0) for d in range(day.max())])
+        np.save(os.path.join(output_path, f"{number_to_save}_contacts_daily.npy"), contacts_daily)
+    print("advancing works!",  flush=True)
     end_advance = time.time()
     print(
         f'Time for advancing simulation: {end_advance - start_advance} seconds')
