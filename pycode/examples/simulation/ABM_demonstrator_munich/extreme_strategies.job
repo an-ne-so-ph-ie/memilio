@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_extremes"
+#SBATCH -o log_extremes_%j.out
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH -c 30
+#SBATCH --mem 480G
+#SBATCH --time 03:00:00
+
+export OMP_NUM_THREADS=1
+export OMP_DYNAMIC=FALSE
+export PYTHONUNBUFFERED=1
+export KAPPA_FACTOR=2.2
+export OUTPUT_FOLDER=/storage/users/$USER/extremes
+
+echo "CPUs: $SLURM_CPUS_PER_TASK"
+python extreme_strategies.py
+echo "Python exit code: $?"
