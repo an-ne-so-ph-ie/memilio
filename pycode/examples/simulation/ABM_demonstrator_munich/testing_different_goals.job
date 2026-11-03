@@ -9,6 +9,13 @@
 
 export OMP_NUM_THREADS=1
 export OMP_DYNAMIC=FALSE
+export PYTHONUNBUFFERED=1 
+
+export KAPPA_FACTOR=2.2  
+export PARTICLE_FILE=pop8_sel_particles.csv  
+export SELECTED_PARTICLES=selected_particles.csv  
+export OUTPUT_FOLDER=$PWD/output/screening_kappa_2.2_12_seeds  
+
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"
 
@@ -17,3 +24,4 @@ python testing_different_goals_main.py
 echo "Python exit code: $?"
 
 sacct -j $SLURM_JOB_ID --format=JobID,State,ExitCode,Elapsed,MaxRSS,ReqMem
+
