@@ -847,6 +847,11 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
 
     #write_person_to_loc_assigment(sim.model, sim_num)
     # output object
+    if os.environ.get("NO_HISTORY") == "1":
+        start_advance = time.time()
+        sim.advance(tmax)
+        print(f"Time for advancing simulation (no history): {time.time() - start_advance} seconds", flush=True)
+        return
     history = abm.HistorySmaller() # before: History()
     start_advance = time.time()
     # advance simulation until tmax

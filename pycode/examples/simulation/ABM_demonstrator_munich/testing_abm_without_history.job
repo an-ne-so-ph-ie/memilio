@@ -1,0 +1,27 @@
+#!/bin/bash
+
+#SBATCH -J "ABM_without_history"
+#SBATCH -o log_without_history_%j.out
+#SBATCH -p cn
+#SBATCH -N 1
+#SBATCH -c 1
+#SBATCH --mem 20G
+#SBATCH --time 04:00:00
+
+export OMP_NUM_THREADS=1
+export OMP_DYNAMIC=FALSE
+export MKL_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export KAPPA_FACTOR=2.2
+
+mkdir -p output/output/without_history_0211
+
+echo "=== with history ==="
+time python testing_abm_without_history.py
+echo "Python exit code: $?"
+
+echo "=== without history ==="
+export NO_HISTORY=1
+time python testing_abm_without_history.py
+echo "Python exit code: $?"
