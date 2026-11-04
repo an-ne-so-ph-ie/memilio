@@ -156,8 +156,28 @@ struct LogTimePoint : mio::LogAlways { //AS
     }
 };
 
-using HistorySmaller = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated, LogContactHours>; 
-using HistoryOptimization = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated>;
+struct LogTests : mio::LogAlways {
+    // pro Stunde: durchgeführte PCR-Tests und davon positive sammeln
+    using Type = std::pair<int, int>;
+    static Type log(const mio::abm::Simulation<>& sim)
+    {
+        const auto step_end   = sim.get_time();
+        const auto step_start = step_end - mio::abm::hours(1);
+        int tests             = 0;
+        int positive          = 0;
+        for (auto&& person : sim.get_model().get_persons()) {
+            auto test_result = person.get_test_result(mio::abm::TestType::PCR);
+            if (test_result.time_of_testing >= step_start && test_result.time_of_testing < step_end) {
+                tests += 1;
+                positive += test_result.result ? 1 : 0;
+            }
+        }
+        return {tests, positive};
+    }
+};
+
+using HistorySmaller      = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated, LogContactHours, LogTests>;
+using HistoryOptimization = mio::History<mio::DataWriterToMemory, LogTimePoint, LogAggregated, LogTests>;
 
 //LocationId logger
 struct LogLocationIds : mio::LogOnce {//AS
