@@ -861,7 +861,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     if log_contacts:
         times, agg, coho, tests = history.log
     else:
-        times, agg = history.log
+        times, agg, tests = history.log
     comps = pd.DataFrame([a[0] for a in agg], columns=["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"])
     comps.insert(0, "t", times)
     comps.to_csv(os.path.join(output_path, str(number_to_save) + '_comps_damping_compact_version.csv'), sep=" ", index=False)
@@ -872,7 +872,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
         day = np.arange(len(times)) // 24
         contacts_daily = np.array([contact_hours[day == d].sum(0) for d in range(day.max())])
         np.save(os.path.join(output_path, f"{number_to_save}_contacts_daily.npy"), contacts_daily)
-        np.save(os.path.join(output_path, f"{number_to_save}_tests.npy"), np.array(tests))
+    np.save(os.path.join(output_path, f"{number_to_save}_tests.npy"), np.array(tests))
     print("advancing works!",  flush=True)
     end_advance = time.time()
     print(

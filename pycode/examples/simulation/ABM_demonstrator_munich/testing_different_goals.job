@@ -6,6 +6,7 @@
 #SBATCH -N 1
 #SBATCH -c 48
 #SBATCH --mem 768G
+#SBATCH --time=14:00:00
 
 export OMP_NUM_THREADS=1
 export OMP_DYNAMIC=FALSE
@@ -14,7 +15,7 @@ export PYTHONUNBUFFERED=1
 export KAPPA_FACTOR=2.2  
 export PARTICLE_FILE=pop8_sel_particles.csv  
 export SELECTED_PARTICLES=selected_particles.csv  
-export OUTPUT_FOLDER=$PWD/output/screening_kappa_2.2_12_seeds  
+export OUTPUT_FOLDER=/storage/users/anne_sophie/screening_kappa_2.2_12_seeds_h70_d19_noanti_pcracc  
 
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"

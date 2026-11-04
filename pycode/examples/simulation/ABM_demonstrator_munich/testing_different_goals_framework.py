@@ -58,6 +58,7 @@ variable_names = [f"{intervention}_{period_number}" for period_number in (1, 2) 
 variable_names += ["change_day_1", "change_day_2"]
 objective_candidates = ["f_I", "f_D", "f_ED", "f_YLL", "f_EYLL", "peak_hosp", "peak_icu",   # health
                         "f_W", "f_K_work", "f_S_A", "f_S_B", "f_K_social", "f_K_all"]   # work, social
+objective_candidates += ["tests_max_daily", "tests_total", "tests_positive_total", "test_capacity_ratio"] #tests
 
 # order
 location_type_home, location_type_school, location_type_work, location_type_social_event = range(4)
