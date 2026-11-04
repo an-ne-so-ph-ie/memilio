@@ -787,10 +787,17 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
 
      # add closure for work, event, shop and school locations at day 5
     # baseline: wird dann ab dem ersten Änderungstag ersetzt
-    sim.model.add_work_damping(t0 + abm.days(19), work_closure)
-    sim.model.add_school_damping(t0 + abm.days(14), school_closure)
-    sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
-    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+    #sim.model.add_work_damping(t0 + abm.days(19), work_closure)
+    #sim.model.add_school_damping(t0 + abm.days(14), school_closure)
+    #sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
+    #sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
+    first_change_day = change_days[0] if change_days is not None else simulation_days
+    if first_change_day > 19:
+        sim.model.add_work_damping(t0 + abm.days(19), work_closure)
+        sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
+    if first_change_day > 14:
+        sim.model.add_school_damping(t0 + abm.days(14), school_closure)
+    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13) 
 
     if periods is not None:
         add_interventions(sim.model, t0, change_days, periods, simulation_days)

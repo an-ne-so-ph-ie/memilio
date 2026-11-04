@@ -171,6 +171,7 @@ class AbmProblem(Problem):
 if __name__ == "__main__":
     start_nsgaii = time.time()
     abm_problem = AbmProblem()
+    constraints = {"test_capacity_ratio": 1.0}    # an keinem Tag mehr Tests als freie Kapa
     run_settings = {"objectives": objectives, "constraints": constraints, "population_size": population_size,
                     "number_of_generations": number_of_generations, "seed_indices": abm_problem.seed_indices, 
                     "kappa_factor": tdgf.abm_demonstrator_munich.kappa_conversion_factor, 

@@ -26,6 +26,7 @@ import tempfile
 
 import numpy as np
 import pandas as pd
+import datetime
 
 import memilio.simulation.abm as abm
 from memilio.simulation import AgeGroup
@@ -36,17 +37,21 @@ sys.path.insert(0, base_directory)
 input_directory = os.path.join(base_directory, "input")
 output_directory = os.path.join(base_directory, "nsga2_results")
 
-simulation_end_day = 60                
-earliest_change_day = 25               
-latest_change_day = 45
+simulation_end_day = 70 #60                
+earliest_change_day = 19 #25  # erster lockdown             
+latest_change_day = 49
 reference_week_days = 7                
 #number_of_seeds = 15         
 maximum_home_office = 0.7   
 #seed_selection_random_seed = 2020
-minimum_period_days = 7        
+minimum_period_days = 7    
+
+simulation_start_date = datetime.date(2020, 3, 2)
+#TODO need to check numbers again
+free_test_capacity_per_week = {12: 490, 13: 1130, 14: 1270, 15: 1541, 16: 1648, 17: 1666, 18: 1867, 19: 1818, 20: 1754}
 
 # interventions 
-test_types = ["none", "antigen", "pcr"]
+test_types = ["none", "pcr"] #"antigen"
 interventions = ["home_office", "school_closure", "social_events", "work_test", "school_test",
                  "probability_test_work", "probability_test_school"]
 variable_names = [f"{intervention}_{period_number}" for period_number in (1, 2) for intervention in interventions]
@@ -85,7 +90,20 @@ def selected_seed_indices():
 
 def to_python_value(value):
     return value.item() if hasattr(value, "item") else value
- 
+
+def test_capacity_of_day(day):
+    """ getfree PCR capacity of the calendar week the simulation day belongs to (rki)"""
+    calendar_week = (simulation_start_date + datetime.timedelta(days=int(day))).isocalendar()[1]
+    return free_test_capacity_per_week[calendar_week]
+
+
+def test_values(tests_hourly):
+    """daily tests from the hourly logger and the worst ratio to the capacity"""
+    tests_daily = tests_hourly[1:, 0].reshape(-1, 24).sum(axis=1)[:simulation_end_day]   # erster Eintrag = Startzeitpunkt
+    positive_daily = tests_hourly[1:, 1].reshape(-1, 24).sum(axis=1)[:simulation_end_day]
+    ratios = [tests_daily[day] / test_capacity_of_day(day) for day in range(earliest_change_day, simulation_end_day)]
+    return {"tests_max_daily": float(tests_daily.max()), "tests_total": float(tests_daily.sum()),
+            "tests_positive_total": float(positive_daily.sum()), "test_capacity_ratio": float(max(ratios))}
  
 def decode_strategy(strategy):
     """pymoo strategy converting into abm strategy"""
@@ -103,7 +121,11 @@ def objectives_of_run(path_output_folder, number_to_save, death_probability):
     daily_contacts = np.load(contacts_file).sum(axis=(2, 3)) if os.path.exists(contacts_file) else None              
     #daily_contacts = np.load(f"{output_prefix}_contacts_daily.npy").sum(axis=(2, 3))    
     infection_paths = pd.read_csv(f"{output_prefix}_infection_paths_damping.txt", sep=r"\s+")
-    return compute_objectives(infection_paths, compartments, presence, daily_contacts, death_probability)
+    objective_values = compute_objectives(infection_paths, compartments, presence, daily_contacts, death_probability)
+    tests_file = f"{output_prefix}_tests.npy"
+    if os.path.exists(tests_file):
+        objective_values.update(test_values(np.load(tests_file)))
+    return objective_values
 
 
 def simulate_strategy(strategy, seed_index, number_to_save, path_output_folder):
