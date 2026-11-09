@@ -27,7 +27,8 @@
 
 //Includes from MEmilio
 #include "abm/simulation.h"
-#include "abm/lockdown_rules.h"  
+#include "abm/lockdown_rules.h" 
+#include "memilio/io/json_serializer.h" 
 
 #include "pybind11/attr.h"
 #include "pybind11/cast.h"
