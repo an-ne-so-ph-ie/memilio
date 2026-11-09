@@ -1290,7 +1290,57 @@ PYBIND11_MODULE(_simulation_abm, m)
     m.def("save_infection_paths", &write_infection_paths, py::return_value_policy::reference_internal);
     m.def("save_comp_output", &write_compartments, py::return_value_policy::reference_internal);
     m.def("write_contacts", &write_contact_file, py::return_value_policy::reference_internal);
+
+        
+    //AS: Parameter und Modellablauf (bis Ende)
+    m.def("parameters_to_json", [](const mio::abm::Parameters& params) {
+        auto result = mio::serialize_json(params);
+        if (!result) {
+            throw std::runtime_error(result.error().formatted_message());
+        }
+        return result.value().toStyledString();
+    });
+    m.def("local_parameters_to_json", [](const mio::abm::LocalInfectionParameters& params) {
+        auto result = mio::serialize_json(params);
+        if (!result) {
+            throw std::runtime_error(result.error().formatted_message());
+        }
+        return result.value().toStyledString();
+    });
+    m.def("testing_strategy_to_json", [](const mio::abm::Model& model) {
+        auto result = mio::serialize_json(model.get_testing_strategy());
+        if (!result) {
+            throw std::runtime_error(result.error().formatted_message());
+        }
+        return result.value().toStyledString();
+    });
+    //AS: zeitabhängige Größen mit Zeitumrechnung
+    m.def("mobility_ratios_at", [](const mio::abm::Parameters& params, int hour) {
+        auto t = mio::SimulationTime<double>((mio::abm::TimePoint(0) + mio::abm::hours(hour)).days());
+        Eigen::VectorXd social_event_rate = params.get<mio::abm::SocialEventRate>().get_matrix_at(t);
+        Eigen::VectorXd shopping_rate     = params.get<mio::abm::BasicShoppingRate>().get_matrix_at(t);
+        py::dict ratios;
+        ratios["WorkRatio"]   = double(params.get<mio::abm::WorkRatio>().get_matrix_at(t)[0]);
+        ratios["SchoolRatio"] = double(params.get<mio::abm::SchoolRatio>().get_matrix_at(t)[0]);
+        ratios["SocialEventRate"] =
+            std::vector<double>(social_event_rate.data(), social_event_rate.data() + social_event_rate.size());
+        ratios["BasicShoppingRate"] =
+            std::vector<double>(shopping_rate.data(), shopping_rate.data() + shopping_rate.size());
+        return ratios;
+    });
+    m.def("infection_rate_damping_at", [](const mio::abm::Parameters& params, int hour) {
+        auto t                = mio::abm::TimePoint(0) + mio::abm::hours(hour);
+        double damping_factor = 1.0;
+        for (const auto& [t_damp, factor] : params.get<mio::abm::InfectionRateDampings>()) {
+            if (t_damp <= t)
+                damping_factor = factor;
+            else
+                break;
+        }
+        return damping_factor;
+    });
 }
+
 
 
 PYMIO_IGNORE_VALUE_TYPE(decltype(std::declval<mio::abm::Model>().get_locations()))
