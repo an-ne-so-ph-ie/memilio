@@ -55,7 +55,7 @@ age_group_80_plus = AgeGroup(5)
 
 contact_files = {
     abm.LocationType.Home: ("baseline_home.txt", 1.0),
-    abm.LocationType.School: ("baseline_school_pf_aver.txt", 1.0),
+    abm.LocationType.School: ("baseline_school_pf_eig.txt", 1.0),
     abm.LocationType.Work: ("baseline_work.txt", 1.0),
     # Aufteilung der Other-Matrix im Verhältnis 1.5 : 1 nach Kerkmann et al., normiert auf Anteile, die sich zu 1 addieren (0.6 / 0.4)
     abm.LocationType.SocialEvent: ("baseline_other.txt", 0.6),
@@ -63,6 +63,19 @@ contact_files = {
 }
 
 test_types = {"antigen": (abm.TestType.Antigen, 0.71, 0.996, 30, 1), "pcr": (abm.TestType.PCR, 0.9, 0.995, 2880, 2)}
+
+compartment_names = ["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"]   
+max_work_size = 40
+max_school_size = 45
+initial_infected_no_symptoms = 0.00005
+initial_infected_symptoms = 0.00002
+
+baseline_school_day = 14
+baseline_school_closure = 1.0
+baseline_day = 19                 
+baseline_work_closure = 0.37
+baseline_social_events = 0.51
+baseline_shopping = 0.13
 
 def set_contact_rates(model, contact_path, scaling_file):
     scaling_table = pd.read_csv(scaling_file, index_col=0)
@@ -724,13 +737,14 @@ def write_person_to_loc_assigment(model, sim_num):
     f.close()
 
 def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
-                         work_closure=0.37, school_closure=1.0, simulation_days=92,  change_days=None, periods=None):
+                         work_closure=baseline_work_closure, school_closure=baseline_school_closure, simulation_days=92,
+                         change_days=None, periods=None, build_only=False):  # build_only=True: will not simulate
     print("Simulation:", number_to_save)
     print("Seed:", sim_num)
     if number_to_save is None:
           number_to_save = sim_num
     mio.abm.set_log_level_warn()
-    input_path = sys.path[0] + '/input/'
+    input_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'input') + '/'
     output_path = path_output_folder
     os.makedirs(output_path, exist_ok=True)
     specs = pd.read_csv(os.path.join(input_path, particle_file), index_col=0, dtype={"damp_time": "int64"})
@@ -738,8 +752,6 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     # Possible schemes are 'random' and 'maximum'
     location_closure_scheme_random = 'random'
     location_closure_scheme_maximum = 'maximum'
-    max_work_size = 40
-    max_school_size = 45
     # Timing for initialization, simulation and output writing
     total_init_time = 0.0
     total_simulation_time = 0.0
@@ -792,12 +804,12 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
     #sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
     #sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13 ) 
     first_change_day = change_days[0] if change_days is not None else simulation_days
-    if first_change_day > 19:
-        sim.model.add_work_damping(t0 + abm.days(19), work_closure)
-        sim.model.add_socialEvent_damping(t0 + abm.days(19), 0.51)
-    if first_change_day > 14:
-        sim.model.add_school_damping(t0 + abm.days(14), school_closure)
-    sim.model.add_BasicShop_damping(t0 + abm.days(19), 0.13) 
+    if first_change_day > baseline_day:
+        sim.model.add_work_damping(t0 + abm.days(baseline_day), work_closure)
+        sim.model.add_socialEvent_damping(t0 + abm.days(baseline_day), baseline_social_events)
+    if first_change_day > baseline_school_day:
+        sim.model.add_school_damping(t0 + abm.days(baseline_school_day), school_closure)
+    sim.model.add_BasicShop_damping(t0 + abm.days(baseline_day), baseline_shopping)
 
     if periods is not None:
         add_interventions(sim.model, t0, change_days, periods, simulation_days)
@@ -840,13 +852,15 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
 
     # assign initial infection states according to distribution
     start_assign = time.time()
-    assign_infection_states(sim.model, t0, specs["initE"][sim_num], 0.00005,
-                            0.00002, 0.0, 0.0, 0.0, parameters, start_locs)
+    assign_infection_states(sim.model, t0, specs["initE"][sim_num], initial_infected_no_symptoms,
+                            initial_infected_symptoms, 0.0, 0.0, 0.0, parameters, start_locs)
     end_assign = time.time()
     print(
         f'Time for assigning infection state: {end_assign - start_assign} seconds')
     total_init_time += (end_assign - start_assign)
 
+    if build_only:
+        return sim
     
     # write size per location
     abm.write_size_per_location(os.path.join(
@@ -862,7 +876,7 @@ def run_abm_simulation(sim_num, number_to_save=None, path_output_folder=None,
         times, agg, coho, tests = history.log
     else:
         times, agg, tests = history.log
-    comps = pd.DataFrame([a[0] for a in agg], columns=["S", "E", "Ins", "Isy", "Isev", "Icri", "R", "D"])
+    comps = pd.DataFrame([a[0] for a in agg], columns=compartment_names)
     comps.insert(0, "t", times)
     comps.to_csv(os.path.join(output_path, str(number_to_save) + '_comps_damping_compact_version.csv'), sep=" ", index=False)
     presence = np.array([a[1] for a in agg]).reshape(len(agg), 11, 6)
