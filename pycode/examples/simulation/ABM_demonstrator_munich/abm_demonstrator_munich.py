@@ -96,14 +96,14 @@ def add_interventions(model, start_time, change_days, periods, simulation_days):
         model.add_work_damping(period_start, period["home_office"])
         model.add_school_damping(period_start, period["school_closure"])
         model.add_socialEvent_damping(period_start, period["social_events"])
-        for location, location_type in (("work", abm.LocationType.Work), ("school", abm.LocationType.School)):
-            if period[f"{location}_test"] == "none":
-                continue
-            test_type, sensitivity, specificity, minutes_to_result, validity_days = test_types[period[f"{location}_test"]]
-            test_parameters = abm.TestParameters(sensitivity, specificity, abm.minutes(minutes_to_result), test_type)
-            testing_scheme = abm.TestingScheme(abm.TestingCriteria([], []), abm.days(validity_days), period_start, period_end,
-                                               test_parameters, float(period[f"probability_test_{location}"]))
-            model.add_testing_scheme(location_type, testing_scheme) 
+        # for location, location_type in (("work", abm.LocationType.Work), ("school", abm.LocationType.School)):
+        #     if period[f"{location}_test"] == "none":
+        #         continue
+        #     test_type, sensitivity, specificity, minutes_to_result, validity_days = test_types[period[f"{location}_test"]]
+        #     test_parameters = abm.TestParameters(sensitivity, specificity, abm.minutes(minutes_to_result), test_type)
+        #     testing_scheme = abm.TestingScheme(abm.TestingCriteria([], []), abm.days(validity_days), period_start, period_end,
+        #                                        test_parameters, float(period[f"probability_test_{location}"]))
+        #     model.add_testing_scheme(location_type, testing_scheme) 
 
 
 def set_infection_parameters(parameters, kappa):
