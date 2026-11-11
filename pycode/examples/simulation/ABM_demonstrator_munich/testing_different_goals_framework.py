@@ -37,8 +37,8 @@ sys.path.insert(0, base_directory)
 input_directory = os.path.join(base_directory, "input")
 output_directory = os.path.join(base_directory, "nsga2_results")
 
-simulation_days = 77 #70 #60  
-evaluation_end_day = 77               
+simulation_days = 63#77 #70 #60  
+evaluation_end_day = 63              
 earliest_change_day = 19 #25  # erster lockdown             
 latest_change_day = 49
 reference_week_days = 7                
@@ -184,7 +184,9 @@ def compute_objectives(infection_paths, compartments, presence, daily_contacts, 
 
     infection_hour, hours_dead = infection_paths["S"].to_numpy(), infection_paths["D"].to_numpy()
     newly_infected = (infection_hour > start_hour) & (infection_hour < end_hour)
-    newly_dead = (hours_dead > 0) & (end_hour - hours_dead > start_hour)
+    simulated_hours = compartments["t"].to_numpy()[-1]
+    death_hour = simulated_hours - hours_dead                    # D = Stunden im Zustand D bis Simulationsende
+    newly_dead = (hours_dead > 0) & (death_hour > start_hour) & (death_hour <= end_hour)
     new_infections = np.bincount(age_group_of_agent[newly_infected], minlength=number_of_age_groups)
     new_deaths = np.bincount(age_group_of_agent[newly_dead], minlength=number_of_age_groups)
 
