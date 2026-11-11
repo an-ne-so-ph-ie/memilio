@@ -15,7 +15,7 @@ export PYTHONUNBUFFERED=1
 export KAPPA_FACTOR=2.2  
 export PARTICLE_FILE=pop8_sel_particles.csv  
 export SELECTED_PARTICLES=selected_particles.csv  
-export OUTPUT_FOLDER=/storage/users/anne_sophie/screening_kappa_2.2_12_seeds_h70_d19_noanti_pcracc  
+export OUTPUT_FOLDER=/storage/users/anne_sophie/screening_kappa_2.2_12_seeds_h77_d19_notest  
 
 
 echo "CPUs: $SLURM_CPUS_PER_TASK"
