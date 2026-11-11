@@ -52,13 +52,13 @@ free_test_capacity_per_week = {12: 490, 13: 1130, 14: 1270, 15: 1541, 16: 1648, 
 
 # interventions 
 test_types = ["none", "pcr"] #"antigen"
-interventions = ["home_office", "school_closure", "social_events", "work_test", "school_test",
-                 "probability_test_work", "probability_test_school"]
+interventions = ["home_office", "school_closure", "social_events"]#, "work_test", "school_test",
+                 #"probability_test_work", "probability_test_school"]
 variable_names = [f"{intervention}_{period_number}" for period_number in (1, 2) for intervention in interventions]
 variable_names += ["change_day_1", "change_day_2"]
 objective_candidates = ["f_I", "f_D", "f_ED", "f_YLL", "f_EYLL", "peak_hosp", "peak_icu",   # health
                         "f_W", "f_K_work", "f_S_A", "f_S_B", "f_K_social", "f_K_all"]   # work, social
-objective_candidates += ["tests_max_daily", "tests_total", "tests_positive_total", "test_capacity_ratio"] #tests
+#objective_candidates += ["tests_max_daily", "tests_total", "tests_positive_total", "test_capacity_ratio"] #tests
 
 # order
 location_type_home, location_type_school, location_type_work, location_type_social_event = range(4)
@@ -73,10 +73,10 @@ for period_number in (1, 2):
     decision_variables[f"home_office_{period_number}"] = ("real", 0.0, maximum_home_office)   
     decision_variables[f"school_closure_{period_number}"] = ("real", 0.0, 1.0)
     decision_variables[f"social_events_{period_number}"] = ("real", 0.0, 1.0)
-    decision_variables[f"work_test_{period_number}"] = ("choice", test_types)
-    decision_variables[f"school_test_{period_number}"] = ("choice", test_types)
-    decision_variables[f"probability_test_work_{period_number}"] = ("real", 0.0, 1.0)
-    decision_variables[f"probability_test_school_{period_number}"] = ("real", 0.0, 1.0)
+    #decision_variables[f"work_test_{period_number}"] = ("choice", test_types)
+    #decision_variables[f"school_test_{period_number}"] = ("choice", test_types)
+    #decision_variables[f"probability_test_work_{period_number}"] = ("real", 0.0, 1.0)
+    #decision_variables[f"probability_test_school_{period_number}"] = ("real", 0.0, 1.0)
 decision_variables["change_day_1"] = ("integer", earliest_change_day, latest_change_day)
 decision_variables["change_day_2"] = ("integer", earliest_change_day, latest_change_day)
 variable_names = list(decision_variables)

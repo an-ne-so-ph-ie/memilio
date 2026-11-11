@@ -40,8 +40,8 @@ from pymoo.util.display.multi import MultiObjectiveOutput
 import testing_different_goals_framework as tdgf
  
 objectives = ["f_I", "f_W"]              
-#constraints = {}                         # TODO AS
-constraints = {"test_capacity_ratio": 1.0}    # an keinem Tag mehr Tests als freie Kapa
+constraints = {}                         # TODO AS
+#constraints = {"test_capacity_ratio": 1.0}    # an keinem Tag mehr Tests als freie Kapa
 population_size = 48
 number_of_generations = 1                # 1 = only the start population (generation 0)
  
