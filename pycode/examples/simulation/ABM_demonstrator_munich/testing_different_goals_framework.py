@@ -101,9 +101,9 @@ def test_capacity_of_day(day):
 
 def test_values(tests_hourly):
     """daily tests from the hourly logger and the worst ratio to the capacity"""
-    tests_daily = tests_hourly[1:, 0].reshape(-1, 24).sum(axis=1)[:simulation_end_day]   # erster Eintrag = Startzeitpunkt
-    positive_daily = tests_hourly[1:, 1].reshape(-1, 24).sum(axis=1)[:simulation_end_day]
-    ratios = [tests_daily[day] / test_capacity_of_day(day) for day in range(earliest_change_day, simulation_end_day)]
+    tests_daily = tests_hourly[1:, 0].reshape(-1, 24).sum(axis=1)[:simulation_days]   # erster Eintrag = Startzeitpunkt
+    positive_daily = tests_hourly[1:, 1].reshape(-1, 24).sum(axis=1)[:simulation_days]
+    ratios = [tests_daily[day] / test_capacity_of_day(day) for day in range(earliest_change_day, simulation_days)]
     return {"tests_max_daily": float(tests_daily.max()), "tests_total": float(tests_daily.sum()),
             "tests_positive_total": float(positive_daily.sum()), "test_capacity_ratio": float(max(ratios))}
  

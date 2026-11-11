@@ -174,9 +174,14 @@ if __name__ == "__main__":
     abm_problem = AbmProblem()
     
     run_settings = {"objectives": objectives, "constraints": constraints, "population_size": population_size,
-                    "number_of_generations": number_of_generations, "seed_indices": abm_problem.seed_indices, 
-                    "kappa_factor": tdgf.abm_demonstrator_munich.kappa_conversion_factor, 
-                      "particle_file": tdgf.abm_demonstrator_munich.particle_file}
+                    "number_of_generations": number_of_generations, "seed_indices": abm_problem.seed_indices,
+                    "kappa_factor": tdgf.abm_demonstrator_munich.kappa_conversion_factor,
+                    "particle_file": tdgf.abm_demonstrator_munich.particle_file,
+                    "simulation_days": tdgf.simulation_days, "evaluation_end_day": tdgf.evaluation_end_day,
+                    "earliest_change_day": tdgf.earliest_change_day, "latest_change_day": tdgf.latest_change_day,
+                    "minimum_period_days": tdgf.minimum_period_days,
+                    "contact_files": {location_type.name: list(entry) for location_type, entry
+                                      in tdgf.abm_demonstrator_munich.contact_files.items()}}
     with open(os.path.join(abm_problem.path_output_folder, "run_settings.json"), "w") as file:
         json.dump(run_settings, file, indent=1)
     repair = ChangeDayRepair()
