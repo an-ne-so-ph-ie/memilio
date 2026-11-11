@@ -37,7 +37,8 @@ sys.path.insert(0, base_directory)
 input_directory = os.path.join(base_directory, "input")
 output_directory = os.path.join(base_directory, "nsga2_results")
 
-simulation_end_day = 70 #60                
+simulation_days = 77 #70 #60  
+evaluation_end_day = 77               
 earliest_change_day = 19 #25  # erster lockdown             
 latest_change_day = 49
 reference_week_days = 7                
@@ -65,8 +66,8 @@ location_type_home, location_type_school, location_type_work, location_type_soci
 number_of_location_types, number_of_age_groups = 11, 6
 
 evaluation_start_day = 0
-start_hour, end_hour = evaluation_start_day * 24, simulation_end_day * 24
-evaluated_days = np.arange(evaluation_start_day, simulation_end_day)
+start_hour, end_hour = evaluation_start_day * 24, evaluation_end_day * 24
+evaluated_days = np.arange(evaluation_start_day, evaluation_end_day)
 
 decision_variables = {}
 for period_number in (1, 2):
@@ -123,16 +124,16 @@ def objectives_of_run(path_output_folder, number_to_save, death_probability):
     #daily_contacts = np.load(f"{output_prefix}_contacts_daily.npy").sum(axis=(2, 3))    
     infection_paths = pd.read_csv(f"{output_prefix}_infection_paths_damping.txt", sep=r"\s+")
     objective_values = compute_objectives(infection_paths, compartments, presence, daily_contacts, death_probability)
-    tests_file = f"{output_prefix}_tests.npy"
-    if os.path.exists(tests_file):
-        objective_values.update(test_values(np.load(tests_file)))
+    #tests_file = f"{output_prefix}_tests.npy"
+    #if os.path.exists(tests_file):
+    #    objective_values.update(test_values(np.load(tests_file)))
     return objective_values
 
 
 def simulate_strategy(strategy, seed_index, number_to_save, path_output_folder):
     change_days, periods = decode_strategy(strategy)
     abm_demonstrator_munich.run_abm_simulation(seed_index, number_to_save, path_output_folder,
-                                               simulation_days=simulation_end_day,
+                                               simulation_days=simulation_days,
                                                change_days=change_days, periods=periods)
     with open(os.path.join(path_output_folder, f"{number_to_save}_strategy.json"), "w") as file:
         json.dump({"seed_index": int(seed_index), **{k: to_python_value(v) for k, v in strategy.items()}}, file)
@@ -162,8 +163,8 @@ def daily_presence(presence, times, location_type):
     """Hourly to daily presence (hour x location type x age group)"""
     day_of_time_point = (times // 24).astype(int)
     values = presence[:, location_type].sum(axis=1)
-    simulated = day_of_time_point < simulation_end_day
-    return np.bincount(day_of_time_point[simulated], values[simulated], minlength=simulation_end_day)
+    simulated = day_of_time_point < evaluation_end_day
+    return np.bincount(day_of_time_point[simulated], values[simulated], minlength=evaluation_end_day)
  
  
 def weekly_sum(daily_values):
