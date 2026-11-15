@@ -1,0 +1,8 @@
+#!/bin/bash
+#SBATCH -p cn
+#SBATCH -c 2
+#SBATCH --mem 40G
+#SBATCH --time 03:00:00
+#SBATCH -o truncation_check_%j.out
+export PYTHONUNBUFFERED=1
+python truncation_check.py
