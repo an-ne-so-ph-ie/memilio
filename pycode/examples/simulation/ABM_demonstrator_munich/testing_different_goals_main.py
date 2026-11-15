@@ -101,7 +101,7 @@ def pymoo_variables():
  
  
 def strategy_key(strategy):
-    return tuple(str(strategy[name]) for name in tdgf.variable_names)
+    return tuple(str(tdgf.to_python_value(strategy[name])) for name in tdgf.variable_names)
 
 def load_generation_0(available_cpus):
     # Strategien aus x_strategy.json, Ziele neu berechnen
@@ -145,12 +145,13 @@ class AbmProblem(Problem):
 
  
     def _evaluate(self, population, output, *args, **kwargs):
+        new_indices = [index for index, strategy in enumerate(population) if strategy_key(strategy) not in self.candidate_means]
         jobs = []
-        for strategy_index, strategy in enumerate(population):     
+        for strategy_index, strategy in new_indices:     
             for seed_index in self.seed_indices:
                 self.number_to_save_counter += 1
                 jobs.append((strategy_index, seed_index, self.number_to_save_counter, strategy, self.path_output_folder))
-        print(f"Generation {self.generation}: {len(population)} strategies, {len(jobs)} jobs.", flush=True)
+        print(f"Generation {self.generation}: {len(population)} strategies, {len(population) - len(new_indices)} known, "f"{len(jobs)} jobs.", flush=True)
 
         if jobs: 
             results = run_jobs(jobs, self.available_cpus)
@@ -182,7 +183,7 @@ class AbmProblem(Problem):
             for strategy_index, means in mean_per_strategy.iterrows():
                 self.candidate_means[strategy_key(population[strategy_index])] = means
 
-        mean_per_strategy = mean_per_strategy.reindex(range(len(population)))
+        mean_per_strategy = pd.DataFrame([self.candidate_means[strategy_key(strategy)] for strategy in population])
         if mean_per_strategy[objectives].isna().any().any():
             raise RuntimeError(f"NaN in objectives in generation {self.generation}")
         #for strategy, (_, means) in zip(population, mean_per_strategy.iterrows()):
