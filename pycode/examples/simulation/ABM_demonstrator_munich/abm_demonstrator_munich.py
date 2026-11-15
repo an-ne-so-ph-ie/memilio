@@ -38,7 +38,7 @@ dir(mabm)
 
 import pandas as pd
 
-kappa_conversion_factor = float(os.environ.get("KAPPA_FACTOR", 1.0))
+kappa_conversion_factor = float(os.environ.get("KAPPA_FACTOR", 2.2)) #1.0
 particle_file = os.environ.get("PARTICLE_FILE", "pop8_sel_particles.csv")
 
 # number of age groups
