@@ -147,10 +147,10 @@ class AbmProblem(Problem):
     def _evaluate(self, population, output, *args, **kwargs):
         new_indices = [index for index, strategy in enumerate(population) if strategy_key(strategy) not in self.candidate_means]
         jobs = []
-        for strategy_index, strategy in new_indices:     
+        for strategy_index in new_indices:     
             for seed_index in self.seed_indices:
                 self.number_to_save_counter += 1
-                jobs.append((strategy_index, seed_index, self.number_to_save_counter, strategy, self.path_output_folder))
+                jobs.append((strategy_index, seed_index, self.number_to_save_counter, population[strategy_index], self.path_output_folder))
         print(f"Generation {self.generation}: {len(population)} strategies, {len(population) - len(new_indices)} known, "f"{len(jobs)} jobs.", flush=True)
 
         if jobs: 
